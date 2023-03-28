@@ -2,9 +2,10 @@ on:
   push:
 
 permissions:
-      id-token: write # This is required for requesting the JWT
-      contents: read
+  id-token: write # This is required for requesting the JWT
+  contents: read
 
 jobs:
   connect-azure:
     uses: ./.github/workflows/azure-login.yaml
+    secrets: inherit
