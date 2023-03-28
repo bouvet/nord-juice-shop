@@ -1,0 +1,6 @@
+on:
+  push:
+
+jobs:
+  connect-azure:
+    uses: ./.github/workflows/azure-login.yaml
