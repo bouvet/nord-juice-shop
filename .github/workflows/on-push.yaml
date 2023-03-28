@@ -1,6 +1,9 @@
 on:
   push:
 
+permissions:
+  id-token: write # This is required for requesting the JWT
+
 jobs:
   connect-azure:
     uses: ./.github/workflows/azure-login.yaml
