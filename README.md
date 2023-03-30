@@ -12,22 +12,66 @@
 - [Helm](https://helm.sh/docs/intro/install/)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl)
 
-### Azure Kubernetes Services [AKS]
+### Authenticate against Azure
+```bash
+# Log in to Azure CLI with your Bouvet account
+# A new tab will open in your browser, asking you to authenticate
+az login
+
+# Set the subscription in which you wish to deploy Multi-Juicer
+az account set -s <subscription_id | subscription_name>
+```
+
+### Using the script [`manage-multijuicer.sh`](./manage-multijuicer.sh)
+> Modify the environment variables in `.env` to your liking
+>
+> Modify the values in the YAML files as per your needs
+>
+> Make sure that you've followed the steps in [Authenticate against Azure](#authenticate-against-azure) first
+
+> NB: Make sure to source the `.env` file prior to running!
+
+To create a brand new cluster with all services, including an Azure Container Registry, run:
+```bash
+./manage-multijuicer.sh new
+```
+
+To update an existing cluster, or redeploy one that was previously taken down using `./manage-multijuicer.sh down`, run:
+```bash
+./manage-multijuicer.sh up
+```
+
+To stop a running cluster, run:
+```bash
+./manage-multijuicer.sh down
+```
+
+To perform a full wipe (deletes all services, incl. the container registry), run:
+```bash
+./manage-multijuicer.sh wipe
+```
+
+#### Help
+```bash
+./manage-multijuicer.sh -h
+Usage: ./manage-multijuicer.sh COMMAND
+
+    Commands:
+        new         Deploy a brand new cluster
+        down       Stop all running containers
+        up            Spin it back up
+        wipe        Wipe it, deleting all services including the cluster
+
+```
+
+### Manual (Azure Kubernetes Service)
 > Make sure that you've installed [Azure CLI](https://learn.microsoft.com/en-us/dotnet/azure/install-azure-cli) first
 
 These steps are based on [this guide](https://github.com/iteratec/multi-juicer/blob/main/guides/azure/azure.md)
 
-1. Authenticate against Azure
-    ```bash
-    # Log in to Azure CLI with your Bouvet account
-    # A new tab will open in your browser, asking you to authenticate
-    az login
+Make sure that you've authenticated against Azure first. See [Authenticate against Azure](#authenticate-against-azure)
 
-    # Set the subscription in which you wish to deploy Multi-Juicer
-    az account set -s <subscription_id | subscription_name>
-    ```
-
-2. Create the Kubernetes cluster
+1. Create the Kubernetes cluster
     ```bash
     # Determine the resource group in which the resources should be deployed.
     # If you wish to create a new resource group, run
@@ -43,12 +87,12 @@ These steps are based on [this guide](https://github.com/iteratec/multi-juicer/b
     kubectl config current-context
     ```
 
-3. Set up multi-juicer
+2. Set up multi-juicer
     ```bash
     # Add the helm repository for multi-juicer
     helm repo add multi-juicer https://iteratec.github.io/multi-juicer/
 
-    # Use helm to deploy the multi-juicer chart, overriding the values (see values.yml)
+    # Use helm to deploy the multi-juicer chart, overriding the values (see juicer.yaml)
     helm upgrade --install multi-juicer multi-juicer/multi-juicer --values juicer.yaml
 
     # Kubernetes will now spin up the pods
@@ -64,7 +108,7 @@ These steps are based on [this guide](https://github.com/iteratec/multi-juicer/b
 - [Optional] Verify that the application is running correctly
     - See [Verify the app is running correctly](https://github.com/iteratec/multi-juicer/blob/main/guides/azure/azure.md#step-3-verify-the-app-is-running-correctly)
 
-4. Configure Ingress and TLS
+3. Configure Ingress and TLS
     1. Create a Container Registry for the NGINX and cert-manager images
         ```bash
         # Create the Container Registry
@@ -180,7 +224,7 @@ These steps are based on [this guide](https://github.com/iteratec/multi-juicer/b
         kubectl apply -f ingress.yaml --namespace default
         ```
 
-    8. All done! To get the domain name of your instance, execute the following:
-        ```bash
-        az network public-ip show --ids $PUBLIC_IP_ID --query "[dnsSettings.fqdn]" --output tsv
-        ```
+4. All done! To get the domain name of your instance, execute the following:
+    ```bash
+    az network public-ip show --ids $PUBLIC_IP_ID --query "[dnsSettings.fqdn]" --output tsv
+    ```
