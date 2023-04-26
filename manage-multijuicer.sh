@@ -1,4 +1,5 @@
 #! /usr/bin/env bash
+# shellcheck disable=SC2015
 set -euo pipefail
 
 SCRIPT_NAME=$(basename "$0")
@@ -9,6 +10,8 @@ MANAGE_RG=${MANAGE_RG:=0}
 MANAGE_ACR=${MANAGE_ACR:=0}
 # Whether to create/delete the cluster itself. Defaults to false, unless COMMAND is 'new' or 'wipe'
 MANAGE_CLUSTER=${MANAGE_CLUSTER:=0}
+# Whether to configure the monitoring solution. Defaults to true
+MANAGE_MONITORING=${MANAGE_MONITORING:=1}
 
 function usage() {
     echo -e "Usage: ./$SCRIPT_NAME COMMAND
@@ -26,6 +29,7 @@ function setup_colors() {
   if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
     NOFORMAT='\033[0m' RED='\033[0;31m' GREEN='\033[0;32m' ORANGE='\033[0;33m' BLUE='\033[0;34m' PURPLE='\033[0;35m' CYAN='\033[0;36m' YELLOW='\033[1;33m'
   else
+    # shellcheck disable=SC2034
     NOFORMAT='' RED='' GREEN='' ORANGE='' BLUE='' PURPLE='' CYAN='' YELLOW=''
   fi
 }
@@ -44,6 +48,10 @@ failure() {
   echo >&2 -e "${RED}${1:-\tERROR}${NOFORMAT}"
 }
 
+function randstr() {
+    </dev/urandom tr -dc 'A-Za-z0-9' | head -c 24; echo
+}
+
 ARGS=("$@")
 [[ ${#ARGS[@]} -eq 0 ]] && usage
 
@@ -51,7 +59,10 @@ ARGS=("$@")
 COMMAND="${ARGS[0]}"
 
 ## Parameters
+METRICS_PASS="${METRICS_PASS:-$(randstr)}"
+GRAFANA_PASS="${GRAFANA_PASS:-$(randstr)}"
 ACR_URL="$REGISTRY_NAME.azurecr.io"
+__MONITORING_NAMESPACE="monitoring"
 
 # Container Registry vars
 SOURCE_REGISTRY="registry.k8s.io"
@@ -92,6 +103,11 @@ function destroy_cluster() {
 }
 
 function deploy_multi_juicer() {
+    __MONITORING_ENABLED="true"
+    if [ "$MANAGE_MONITORING" -eq 0 ]; then
+        __MONITORING_ENABLED="false"
+    fi
+
     info "Deploying multi-juicer"
     # Add the helm repo for multi-juicer
     helm repo add --force-update multi-juicer https://iteratec.github.io/multi-juicer/
@@ -103,7 +119,12 @@ function deploy_multi_juicer() {
         --set balancer.cookie.cookieParserSecret="$COOKIE_SECRET" \
         --set balancer.replicas="$BALANCER_REPLICAS" \
         --set juiceShop.maxInstances="$MAX_INSTANCES" \
-        --set juiceShop.ctfKey="$CTF_KEY"
+        --set juiceShop.ctfKey="$CTF_KEY" \
+        --set balancer.metrics.enabled="$__MONITORING_ENABLED" \
+        --set balancer.metrics.dashboards.enabled="$__MONITORING_ENABLED" \
+        --set balancer.metrics.serviceMonitor.enabled="$__MONITORING_ENABLED" \
+        --set balancer.metrics.basicAuth.username="$METRICS_USER" \
+        --set balancer.metrics.basicAuth.password="$METRICS_PASS"
 }
 
 function destroy_multi_juicer() {
@@ -242,6 +263,64 @@ function apply_ingress() {
     kubectl apply -f ingress.yaml --namespace default
 }
 
+function deploy_monitoring() {
+    info "Deploying monitoring services"
+    # Add the helm repository for prometheus
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    # Add the helm repository for grafana
+    helm repo add grafana https://grafana.github.io/helm-charts
+    
+    # Update the local helm chart repository cache
+    helm repo update
+
+    # Create a new namespace for the monitoring services
+    kubectl get namespace "$__MONITORING_NAMESPACE" &> /dev/null && true || kubectl create namespace "$__MONITORING_NAMESPACE"
+
+    # Use helm to deploy the prometheus-stack chart, overriding the values (see monitoring.yaml)
+    helm --namespace "$__MONITORING_NAMESPACE" \
+        upgrade --install monitoring \
+        prometheus-community/kube-prometheus-stack \
+        --version 45.21.0 \
+        --values monitoring.yaml \
+        --set grafana.adminPassword="$GRAFANA_PASS"
+    
+    # Use helm to deploy the loki chart
+    helm --namespace "$__MONITORING_NAMESPACE" \
+        upgrade --install loki \
+        grafana/loki \
+        --version 5.2.0 \
+        --set serviceMonitor.enabled="true"
+
+    # Use helm to deploy the promtail chart
+    helm --namespace "$__MONITORING_NAMESPACE" \
+        upgrade --install promtail \
+        grafana/promtail \
+        --version 6.11.0 \
+        --set config.lokiAddress="http://loki:3100/loki/api/v1/push" \
+        --set serviceMonitor.enabled="true"
+}
+
+function destroy_monitoring() {
+    info "Deleting monitoring services"
+
+    # Delete the monitoring deployment
+    helm --namespace "$__MONITORING_NAMESPACE" delete promtail
+    helm --namespace "$__MONITORING_NAMESPACE" delete loki
+    helm --namespace "$__MONITORING_NAMESPACE" delete monitoring
+    # https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack#uninstall-helm-chart
+    kubectl delete crd alertmanagerconfigs.monitoring.coreos.com
+    kubectl delete crd alertmanagers.monitoring.coreos.com
+    kubectl delete crd podmonitors.monitoring.coreos.com
+    kubectl delete crd probes.monitoring.coreos.com
+    kubectl delete crd prometheuses.monitoring.coreos.com
+    kubectl delete crd prometheusrules.monitoring.coreos.com
+    kubectl delete crd servicemonitors.monitoring.coreos.com
+    kubectl delete crd thanosrulers.monitoring.coreos.com
+    
+    # Delete the namespace for the monitoring services
+    kubectl delete namespace "$__MONITORING_NAMESPACE" --force
+}
+
 function get_credentials() {
     # Retrieve the credentials for the cluster
     az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME" --overwrite-existing
@@ -271,6 +350,10 @@ function up() {
         attach_container_registry
     fi
     get_credentials
+    # Manage the monitoring services (prometheus/grafana/loki)
+    if [ "$MANAGE_MONITORING" -eq 1 ]; then
+        deploy_monitoring
+    fi
     deploy_multi_juicer && success
     deploy_ingress && success
     wait_for_propagation
@@ -294,6 +377,10 @@ function down() {
     destroy_cert_manager && success || failure
     destroy_ingress && success || failure
     destroy_multi_juicer && success || failure
+    # Manage the monitoring services (prometheus/grafana/loki)
+    if [ "$MANAGE_MONITORING" -eq 1 ]; then
+        destroy_monitoring && success || failure
+    fi
     # Manage the cluster itself
     if [ "$MANAGE_CLUSTER" -eq 1 ]; then
         destroy_cluster && success || failure
