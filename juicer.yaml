@@ -29,7 +29,7 @@ balancer:
       enabled: false
     basicAuth:
       username: prometheus-scraper
-      # -- Should be changed when metrics are enabled.
+      # -- Should be changed when metrics are enabled. Overridden with --set in the manage-multijuicer.sh script.
       password: ouUiyF3jgH2zxrKFYaMGGEppBB5tbLSj
 
 juiceShop:
