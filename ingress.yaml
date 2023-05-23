@@ -10,11 +10,18 @@ spec:
   tls:
   - hosts:
     - bvt-juice.norwayeast.cloudapp.azure.com
-    secretName: tls-secret
+    secretName: juice-tls-secret
   rules:
   - host: bvt-juice.norwayeast.cloudapp.azure.com
     http:
       paths:
+        - path: /ctfd
+          pathType: Prefix
+          backend:
+            service:
+              name: ctfd-ctfd
+              port:
+                number: 80
         - path: /
           pathType: ImplementationSpecific
           backend:

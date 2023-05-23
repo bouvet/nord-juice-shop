@@ -12,6 +12,16 @@ MANAGE_ACR=${MANAGE_ACR:=0}
 MANAGE_CLUSTER=${MANAGE_CLUSTER:=0}
 # Whether to configure the monitoring solution. Defaults to true
 MANAGE_MONITORING=${MANAGE_MONITORING:=1}
+# Whether to configure the CTFd deployment. Defaults to true
+MANAGE_CTFD=${MANAGE_CTFD:=1}
+
+# Whether to delete PVCs (Persistent Volume Claims) when running 'down'
+# If no MYSQL/Redis password is supplied, it will be random-generated, and as such will result in failure when running 'up',
+# as a new password will be generated which does not match the persisted database password.
+DESTROY_PVC=${DESTROY_PVC:=0}
+if [ -z "$CTFD_MYSQL_ROOT_PASS" ] || [ -z "$CTFD_MYSQL_PASS" ] || [ -z "$CTFD_REDIS_PASS" ]; then
+    DESTROY_PVC=1
+fi
 
 function usage() {
     echo -e "Usage: ./$SCRIPT_NAME COMMAND
@@ -61,8 +71,18 @@ COMMAND="${ARGS[0]}"
 ## Parameters
 METRICS_PASS="${METRICS_PASS:-$(randstr)}"
 GRAFANA_PASS="${GRAFANA_PASS:-$(randstr)}"
+CTFD_REDIS_PASS="${CTFD_REDIS_PASS:-$(randstr)}"
+CTFD_MYSQL_ROOT_PASS="${CTFD_MYSQL_ROOT_PASS:-$(randstr)}"
+CTFD_MYSQL_PASS="${CTFD_MYSQL_PASS:-$(randstr)}"
+CTFD_MYSQL_REPL_PASS="${CTFD_MYSQL_REPL_PASS:-$(randstr)}"
+CTFD_SECRET_KEY="${CTFD_SECRET_KEY:-$(randstr)}"
+
 ACR_URL="$REGISTRY_NAME.azurecr.io"
 __MONITORING_NAMESPACE="monitoring"
+__MONITORING_ENABLED="true"
+if [ "$MANAGE_MONITORING" -eq 0 ]; then
+    __MONITORING_ENABLED="false"
+fi
 
 # Container Registry vars
 SOURCE_REGISTRY="registry.k8s.io"
@@ -103,11 +123,6 @@ function destroy_cluster() {
 }
 
 function deploy_multi_juicer() {
-    __MONITORING_ENABLED="true"
-    if [ "$MANAGE_MONITORING" -eq 0 ]; then
-        __MONITORING_ENABLED="false"
-    fi
-
     info "Deploying multi-juicer"
     # Add the helm repo for multi-juicer
     helm repo add --force-update multi-juicer https://iteratec.github.io/multi-juicer/
@@ -224,7 +239,7 @@ function destroy_dns_record() {
 function deploy_cert_manager() {
     info "Deploying cert-manager"
     # Add a label to the default namespace, to disable resource validation
-    kubectl label namespace default cert-manager.io/disable-validation=true
+    kubectl label --overwrite namespace default cert-manager.io/disable-validation=true
 
     # Add the helm repository for Jetstack
     helm repo add --force-update jetstack https://charts.jetstack.io
@@ -321,6 +336,32 @@ function destroy_monitoring() {
     kubectl delete namespace "$__MONITORING_NAMESPACE" --force
 }
 
+function deploy_ctfd() {
+    info "Deploying CTFd"
+
+    # Enable OCI support
+    export HELM_EXPERIMENTAL_OCI=1
+
+    # Use helm to deploy the CTFd chart, overriding the values (see ctfd.yaml)
+    helm upgrade --install ctfd \
+        oci://ghcr.io/bman46/ctfd/ctfd \
+        --values ctfd.yaml \
+        --set redis.auth.password="$CTFD_REDIS_PASS" \
+        --set mariadb.auth.rootPassword="$CTFD_MYSQL_ROOT_PASS" \
+        --set mariadb.auth.password="$CTFD_MYSQL_PASS" \
+        --set mariadb.auth.replicationPassword="$CTFD_MYSQL_REPL_PASS" \
+        --set env.open.SECRET_KEY="$CTFD_SECRET_KEY"
+}
+
+function destroy_ctfd() {
+    info "Deleting CTFd"
+    # Delete the ctfd deployment
+    helm uninstall ctfd
+    if [ "$DESTROY_PVC" -eq 1 ]; then
+        kubectl delete pvc -l "app.kubernetes.io/instance=ctfd"
+    fi
+}
+
 function get_credentials() {
     # Retrieve the credentials for the cluster
     az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME" --overwrite-existing
@@ -329,7 +370,7 @@ function get_credentials() {
 function wait_for_propagation() {
     # Wait for changes to propagate
     info "Waiting for changes to propagate..."
-    sleep 60
+    sleep 30
 }
 
 function up() {
@@ -347,14 +388,17 @@ function up() {
         create_cluster && success
     fi
     if [ "$MANAGE_CLUSTER" -eq 1 ] && [ "$MANAGE_ACR" -eq 1 ]; then
-        attach_container_registry
+        attach_container_registry && success
     fi
     get_credentials
     # Manage the monitoring services (prometheus/grafana/loki)
     if [ "$MANAGE_MONITORING" -eq 1 ]; then
-        deploy_monitoring
+        deploy_monitoring && success
     fi
     deploy_multi_juicer && success
+    if [ "$MANAGE_CTFD" -eq 1 ]; then
+        deploy_ctfd && success
+    fi
     deploy_ingress && success
     wait_for_propagation
     configure_dns_record && success
@@ -376,6 +420,9 @@ function down() {
     get_credentials 2> /dev/null || true
     destroy_cert_manager && success || failure
     destroy_ingress && success || failure
+    if [ "$MANAGE_CTFD" -eq 1 ]; then
+        destroy_ctfd && success || failure
+    fi
     destroy_multi_juicer && success || failure
     # Manage the monitoring services (prometheus/grafana/loki)
     if [ "$MANAGE_MONITORING" -eq 1 ]; then
