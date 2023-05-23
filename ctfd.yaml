@@ -1,0 +1,56 @@
+# Default values for ctfd.
+
+replicaCount: 2
+
+# Bitnami helm redis deployment
+redis:
+  # Enable Redis server provided by helm:
+  enabled: True
+  auth:
+    enabled: true
+    password: "TWYxhLYzsAASkX2Tm6fC7EO0"
+
+mariadb:
+  # Enable mariadb server provided by helm:
+  enabled: True
+  # Login credentials:
+  auth:
+    rootPassword: "Nscek3Oh6tarZqK5XlkPSazK"
+    password: "EwENhUIMdbvsv29StDrGRqSb"
+
+    replicationPassword: "AKsu1TD1nr5cV3Q51Rk6BlYx"
+
+  persistence:
+    enabled: true
+    size: 15Gi
+
+env:
+  open:
+    # Required if more than 1 worker (randomly generate)
+    SECRET_KEY: "vVvPUTQlORsy6QFjm547MQ53"
+    # Amount of CTFd workers
+    WORKERS: 5
+    # If behing ingress proxy or nginx:
+    REVERSE_PROXY: True 
+
+# For uploads to the CTFd server (images and other content)
+persistence:
+  uploads:
+    enabled: true
+    #ReadWriteMany may be desired here if using multiple CTFd pods
+    accessMode: ReadWriteMany
+    size: 10Gi
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+metrics:
+  enabled: false
+
+  # Enable this if you're using https://github.com/coreos/prometheus-operator
+  serviceMonitor:
+    enabled: false
+    selector:
+      prometheus: kube-prometheus
