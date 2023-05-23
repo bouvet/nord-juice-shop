@@ -1,6 +1,11 @@
 # Default values for ctfd.
+# See https://github.com/bman46/CTFd-Helm/blob/main/values.yaml
+# Passwords/secrets in this file are random-generated,
+# and overriden using --set in the deployment script
 
-replicaCount: 2
+# If > 1, make sure to set persistence.uploads.accessMode to ReadWriteMany
+# DO NOT increase this value without testing, as there seems to be a bug when replicaCount is greater than 1
+replicaCount: 1
 
 # Bitnami helm redis deployment
 redis:
@@ -24,6 +29,7 @@ mariadb:
     enabled: true
     size: 15Gi
 
+# See https://docs.ctfd.io/docs/deployment/configuration for CTFd env vars
 env:
   open:
     # Required if more than 1 worker (randomly generate)
@@ -31,14 +37,16 @@ env:
     # Amount of CTFd workers
     WORKERS: 5
     # If behing ingress proxy or nginx:
-    REVERSE_PROXY: True 
+    REVERSE_PROXY: True
+    # Specifies what path CTFd is mounted under
+    APPLICATION_ROOT: "/ctfd" 
 
 # For uploads to the CTFd server (images and other content)
 persistence:
   uploads:
     enabled: true
     #ReadWriteMany may be desired here if using multiple CTFd pods
-    accessMode: ReadWriteMany
+    accessMode: ReadWriteOnce
     size: 10Gi
 
 service:
@@ -52,5 +60,6 @@ metrics:
   # Enable this if you're using https://github.com/coreos/prometheus-operator
   serviceMonitor:
     enabled: false
+    namespace: monitoring
     selector:
       prometheus: kube-prometheus
