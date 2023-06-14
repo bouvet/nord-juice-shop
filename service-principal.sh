@@ -44,16 +44,16 @@ COMMAND="${ARGS[0]}"
 function create_app_registration() {
     info "Creating app registration '$SERVICE_PRINCIPAL_NAME'"
     # Create the app registration
-    az ad app create --display-name $SERVICE_PRINCIPAL_NAME
+    az ad app create --display-name "$SERVICE_PRINCIPAL_NAME"
 }
 
 function destroy_app_registration() {
     info "Deleting the app registration (and service principal) '$SERVICE_PRINCIPAL_NAME'"
     # Get the app registration ID
-    APP_ID=$(az ad app list --filter "displayname eq 'nord-juice-shop-2'" --query "[].id" -o tsv)
+    APP_ID=$(az ad app list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
 
     # Delete the app registration
-    az ad app delete --id $APP_ID
+    az ad app delete --id "$APP_ID"
 }
 
 function create_service_principal() {
@@ -62,7 +62,7 @@ function create_service_principal() {
     APP_ID=$(az ad app list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].appId" -o tsv)
 
     # Create the service principal
-    az ad sp create --id $APP_ID
+    az ad sp create --id "$APP_ID"
 }
 
 function set_owners() {
@@ -72,16 +72,16 @@ function set_owners() {
 
     info "Getting members from AAD group '$ADMIN_AAD_GROUP'"
     # Gets the owners and converts the multiline output to an array
-    SAVEIFS=$IFS
+    SAVEIFS="$IFS"
     IFS=$'\n'
     OWNERS=($(az ad group member list -g "$ADMIN_AAD_GROUP" --query "[].id" -o tsv))
-    IFS=$SAVEIFS
+    IFS="$SAVEIFS"
 
     info "Setting owners for service principal '$SERVICE_PRINCIPAL_NAME' - will give Bad Request error if owner is already present"
     for OWNER in "${OWNERS[@]}"; do
         info "  owner with ID $OWNER"
         # Add owner to app registration
-        az ad app owner add --id $APP_ID --owner-object-id $OWNER
+        az ad app owner add --id "$APP_ID" --owner-object-id "$OWNER"
 
         # Add owner to service principal, using rest as it is not yet supported in az cli
         az rest \
@@ -100,9 +100,9 @@ function create_role_assignment() {
     # Create the role assignment
     az role assignment create \
         --role contributor \
-        --assignee-object-id $SERVICE_PRINCIPAL_OBJECT_ID \
+        --assignee-object-id "$SERVICE_PRINCIPAL_OBJECT_ID" \
         --assignee-principal-type ServicePrincipal \
-        --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP
+        --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP"
 }
 
 function destroy_role_assignment() {
@@ -113,8 +113,8 @@ function destroy_role_assignment() {
     # Deleting the role assignment
     az role assignment delete \
         --role contributor \
-        --assignee $SERVICE_PRINCIPAL_OBJECT_ID \
-        --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP
+        --assignee "$SERVICE_PRINCIPAL_OBJECT_ID" \
+        --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP"
 }
 
 function create_federated_credential() {
