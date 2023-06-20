@@ -3,7 +3,7 @@
 - https://ctfd.io/
 - https://github.com/CTFd/CTFd
 - https://owasp.org/www-project-juice-shop/
-- https://github.com/iteratec/multi-juicer
+- https://github.com/juice-shop/multi-juicer
 - https://jmatch.medium.com/multijuicer-a-brilliant-way-to-deliver-remote-cyber-security-workshops-ctf-events-c70942bc2f9b
 - https://github.com/equinor/juiceshop-ctfd
 
@@ -67,7 +67,7 @@ Usage: ./manage-multijuicer.sh COMMAND
 ### Manual (Azure Kubernetes Service)
 > Make sure that you've installed [Azure CLI](https://learn.microsoft.com/en-us/dotnet/azure/install-azure-cli) first
 
-These steps are based on [this guide](https://github.com/iteratec/multi-juicer/blob/main/guides/azure/azure.md)
+These steps are based on [this guide](https://github.com/juice-shop/multi-juicer/blob/main/guides/azure/azure.md)
 
 Make sure that you've authenticated against Azure first. See [Authenticate against Azure](#authenticate-against-azure)
 
@@ -90,7 +90,7 @@ Make sure that you've authenticated against Azure first. See [Authenticate again
 2. Set up multi-juicer
     ```bash
     # Add the helm repository for multi-juicer
-    helm repo add multi-juicer https://iteratec.github.io/multi-juicer/
+    helm repo add multi-juicer https://juice-shop.github.io/multi-juicer/
 
     # Use helm to deploy the multi-juicer chart, overriding the values (see juicer.yaml)
     helm upgrade --install multi-juicer multi-juicer/multi-juicer --values juicer.yaml
@@ -106,7 +106,7 @@ Make sure that you've authenticated against Azure first. See [Authenticate again
     ```
 
 - [Optional] Verify that the application is running correctly
-    - See [Verify the app is running correctly](https://github.com/iteratec/multi-juicer/blob/main/guides/azure/azure.md#step-3-verify-the-app-is-running-correctly)
+    - See [Verify the app is running correctly](https://github.com/juice-shop/multi-juicer/blob/main/guides/azure/azure.md#step-3-verify-the-app-is-running-correctly)
 
 3. Configure Ingress and TLS
     1. Create a Container Registry for the NGINX and cert-manager images

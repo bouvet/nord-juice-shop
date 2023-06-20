@@ -1,6 +1,6 @@
 # Override values for MultiJuicer.
-# See defaults at https://github.com/iteratec/multi-juicer/blob/main/helm/multi-juicer/values.yaml
-# See production recommendations at https://github.com/iteratec/multi-juicer/blob/main/guides/production-notes/production-notes.md
+# See defaults at https://github.com/juice-shop/multi-juicer/blob/main/helm/multi-juicer/values.yaml
+# See production recommendations at https://github.com/juice-shop/multi-juicer/blob/main/guides/production-notes/production-notes.md
 
 balancer:
   cookie:
@@ -42,8 +42,8 @@ juiceShop:
   config: |
     application:
       name: 'OWASP JuiceShop'
-      logo: https://raw.githubusercontent.com/iteratec/multi-juicer/main/images/multijuicer-icon-only-padding.png
-      favicon: https://raw.githubusercontent.com/iteratec/multi-juicer/main/juice-balancer/ui/public/favicon.ico
+      logo: https://raw.githubusercontent.com/juice-shop/multi-juicer/main/images/multijuicer-icon-only-padding.png
+      favicon: https://raw.githubusercontent.com/juice-shop/multi-juicer/main/juice-balancer/ui/public/favicon.ico
       theme: bluegrey-lightgreen
       showVersionNumber: false
       showGitHubLinks: false
