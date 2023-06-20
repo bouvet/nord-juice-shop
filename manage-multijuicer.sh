@@ -125,11 +125,13 @@ function destroy_cluster() {
 function deploy_multi_juicer() {
     info "Deploying multi-juicer"
     # Add the helm repo for multi-juicer
-    helm repo add --force-update multi-juicer https://iteratec.github.io/multi-juicer/
+    
+    # Enable OCI support
+    export HELM_EXPERIMENTAL_OCI=1
 
     # Use helm to deploy the multi-juicer chart, overriding the values (see juicer.yaml)
     helm upgrade --install multi-juicer \
-        multi-juicer/multi-juicer \
+        oci://ghcr.io/juice-shop/multi-juicer/helm/multi-juicer \
         --values juicer.yaml \
         --set balancer.cookie.cookieParserSecret="$COOKIE_SECRET" \
         --set balancer.replicas="$BALANCER_REPLICAS" \
