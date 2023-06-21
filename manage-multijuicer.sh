@@ -4,22 +4,52 @@ set -euo pipefail
 
 SCRIPT_NAME=$(basename "$0")
 
+### Required variables ###
+# Key used to generate the challenge flags. Should be rotated between CTF-events
+CTF_KEY="${CTF_KEY:?Missing required environment variable.}"
+# Secret for the cookie parser. Rotate to invalidate all active sessions.
+COOKIE_SECRET="${COOKIE_SECRET:?Missing required environment variable.}"
+# Secret for the CTFd instance
+CTFD_SECRET_KEY="${CTFD_SECRET_KEY:?Missing required environment variable.}"
+
+### Default variables ###
+## Azure / Cluster
+# Hostname, used as <DNS_NAME>.<LOCATION>.cloudapp.azure.com
+DNS_NAME="${DNS_NAME:-bvt-juice}"
+# Region in which to deploy the services
+LOCATION="${LOCATION:-norway-east}"
+# Name of the resource group to use/create.
+RESOURCE_GROUP="${RESOURCE_GROUP:-MultiJuicer}"
+# Name to use for the cluster
+CLUSTER_NAME="${CLUSTER_NAME:-juicy-k8s}"
+# Name to use for the container registry
+REGISTRY_NAME="${REGISTRY_NAME:-bvtmultijuicer}"
+# Number of nodes for the cluster
+NODE_COUNT="${NODE_COUNT:-2}"
+# Number of multi-juicer replicas
+BALANCER_REPLICAS="${BALANCER_REPLICAS:-3}"
+## MultiJuicer / JuiceShop
+# Max. number of JuiceShop instances that can be spawned  
+MAX_INSTANCES="${MAX_INSTANCES:-5}"
+# Username for the metrics user
+METRICS_USER="${METRICS_USER:-prometheus-scraper}"
+## Toggles
 # Whether to create/delete the resource group. Defaults to false
-MANAGE_RG=${MANAGE_RG:=0}
+MANAGE_RG=${MANAGE_RG:-0}
 # Whether to create/delete a container registry. Defaults to false unless 'COMMAND' is 'new' or 'wipe'
-MANAGE_ACR=${MANAGE_ACR:=0}
+MANAGE_ACR=${MANAGE_ACR:-0}
 # Whether to create/delete the cluster itself. Defaults to false, unless COMMAND is 'new' or 'wipe'
-MANAGE_CLUSTER=${MANAGE_CLUSTER:=0}
+MANAGE_CLUSTER=${MANAGE_CLUSTER:-0}
 # Whether to configure the monitoring solution. Defaults to true
-MANAGE_MONITORING=${MANAGE_MONITORING:=1}
+MANAGE_MONITORING=${MANAGE_MONITORING:-0}
 # Whether to configure the CTFd deployment. Defaults to true
-MANAGE_CTFD=${MANAGE_CTFD:=1}
+MANAGE_CTFD=${MANAGE_CTFD:-1}
 
 # Whether to delete PVCs (Persistent Volume Claims) when running 'down'
 # If no MYSQL/Redis password is supplied, it will be random-generated, and as such will result in failure when running 'up',
 # as a new password will be generated which does not match the persisted database password.
 DESTROY_PVC=${DESTROY_PVC:=0}
-if [ -z "$CTFD_MYSQL_ROOT_PASS" ] || [ -z "$CTFD_MYSQL_PASS" ] || [ -z "$CTFD_REDIS_PASS" ]; then
+if [ -z "${CTFD_MYSQL_ROOT_PASS:-}" ] || [ -z "${CTFD_MYSQL_PASS:-}" ] || [ -z "${CTFD_REDIS_PASS:-}" ]; then
     DESTROY_PVC=1
 fi
 
@@ -68,14 +98,13 @@ ARGS=("$@")
 # Command to execute
 COMMAND="${ARGS[0]}"
 
-## Parameters
+# Generate passwords if not provided
 METRICS_PASS="${METRICS_PASS:-$(randstr)}"
 GRAFANA_PASS="${GRAFANA_PASS:-$(randstr)}"
 CTFD_REDIS_PASS="${CTFD_REDIS_PASS:-$(randstr)}"
 CTFD_MYSQL_ROOT_PASS="${CTFD_MYSQL_ROOT_PASS:-$(randstr)}"
 CTFD_MYSQL_PASS="${CTFD_MYSQL_PASS:-$(randstr)}"
 CTFD_MYSQL_REPL_PASS="${CTFD_MYSQL_REPL_PASS:-$(randstr)}"
-CTFD_SECRET_KEY="${CTFD_SECRET_KEY:-$(randstr)}"
 
 ACR_URL="$REGISTRY_NAME.azurecr.io"
 __MONITORING_NAMESPACE="monitoring"
