@@ -45,6 +45,12 @@ MANAGE_MONITORING=${MANAGE_MONITORING:-0}
 # Whether to configure the CTFd deployment. Defaults to true
 MANAGE_CTFD=${MANAGE_CTFD:-1}
 
+# Change locale to make "</dev/urandom tr -dc" work on Mac
+OS=`uname`
+if [ "$OS" = 'Darwin' ]; then
+    export LC_CTYPE=C
+fi
+
 # Whether to delete PVCs (Persistent Volume Claims) when running 'down'
 # If no MYSQL/Redis password is supplied, it will be random-generated, and as such will result in failure when running 'up',
 # as a new password will be generated which does not match the persisted database password.
