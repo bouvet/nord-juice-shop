@@ -62,7 +62,7 @@ EOF
 
 function run_cli() {
     echo "Importing challenges from JuiceShop"
-    _CTF_CHALLENGES_OUT_PATH="ctfd-challenges-$(date +%FT%H%M%S).zip"
+    _CTF_CHALLENGES_OUT_PATH="ctfd-challenges-$(date +%FT%H%M%S).csv"
     juice-shop-ctf --config "$_CTF_CFG_PATH" --output "$_CTF_CHALLENGES_OUT_PATH" && echo "Wrote CTFd challenges to '$_CTF_CHALLENGES_OUT_PATH'"
 }
 
