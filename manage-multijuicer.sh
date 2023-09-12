@@ -157,6 +157,26 @@ function destroy_cluster() {
     az aks delete --yes --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME"
 }
 
+function start_vm_scale_set() {
+    info "Starting the VM scale set"
+    # Get the name of the node resource group
+    NODE_RESOURCE_GROUP=$(az aks list --query "[].nodeResourceGroup" --output tsv)
+    # Get the name of the VM scale set
+    SCALE_SET_NAME=$(az vmss list --resource-group "$NODE_RESOURCE_GROUP" --query "[].name" --output tsv)
+    # Start the VM scale set
+    az vmss start --resource-group "$NODE_RESOURCE_GROUP" --name "$SCALE_SET_NAME"
+}
+
+function deallocate_vm_scale_set() {
+    info "Deallocating the VM scale set"
+    # Get the name of the node resource group
+    NODE_RESOURCE_GROUP=$(az aks list --query "[].nodeResourceGroup" --output tsv)
+    # Get the name of the VM scale set
+    SCALE_SET_NAME=$(az vmss list --resource-group "$NODE_RESOURCE_GROUP" --query "[].name" --output tsv)
+    # Start the VM scale set
+    az vmss deallocate --resource-group "$NODE_RESOURCE_GROUP" --name "$SCALE_SET_NAME"
+}
+
 function deploy_multi_juicer() {
     info "Deploying multi-juicer"
     # Add the helm repo for multi-juicer
@@ -427,6 +447,9 @@ function up() {
     if [ "$MANAGE_CLUSTER" -eq 1 ] && [ "$MANAGE_ACR" -eq 1 ]; then
         attach_container_registry && success
     fi
+    if [ "$MANAGE_CLUSTER" -eq 0 ]; then
+        start_vm_scale_set && success
+    fi
     get_credentials
     # Manage the monitoring services (prometheus/grafana/loki)
     if [ "$MANAGE_MONITORING" -eq 1 ]; then
@@ -468,6 +491,9 @@ function down() {
     # Manage the cluster itself
     if [ "$MANAGE_CLUSTER" -eq 1 ]; then
         destroy_cluster && success || failure
+    fi
+    if [ "$MANAGE_CLUSTER" -eq 0 ]; then
+        deallocate_vm_scale_set && success || failure
     fi
 
     info "DONE"
