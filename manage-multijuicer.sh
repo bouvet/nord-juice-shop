@@ -33,6 +33,8 @@ BALANCER_REPLICAS="${BALANCER_REPLICAS:-3}"
 MAX_INSTANCES="${MAX_INSTANCES:-5}"
 # Username for the metrics user
 METRICS_USER="${METRICS_USER:-prometheus-scraper}"
+# Name of the key vault
+KEY_VAULT_NAME="${KEY_VAULT_NAME:-juice-shop-kv}"
 ## Toggles
 # Whether to create/delete the resource group. Defaults to false
 MANAGE_RG=${MANAGE_RG:-0}
@@ -197,6 +199,11 @@ function deploy_multi_juicer() {
         --set balancer.metrics.serviceMonitor.enabled="$__MONITORING_ENABLED" \
         --set balancer.metrics.basicAuth.username="$METRICS_USER" \
         --set balancer.metrics.basicAuth.password="$METRICS_PASS"
+    
+    # Get the multi-juicer admin password
+    MULTI_JUICER_PASS=$(kubectl get secrets juice-balancer-secret -o=jsonpath='{.data.adminPassword}' | base64 --decode)
+    # Push the password to the key vault
+    az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "multijuicer-admin-password" --value "$MULTI_JUICER_PASS"
 }
 
 function destroy_multi_juicer() {
