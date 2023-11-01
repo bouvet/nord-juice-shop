@@ -150,7 +150,7 @@ function destroy_resource_group() {
 function create_cluster() {
     info "Creating AKS cluster '$CLUSTER_NAME'"
     # Create the AKS cluster
-    az aks create --yes --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME" --node-count "$NODE_COUNT"
+    az aks create --yes --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME" --node-count "$NODE_COUNT" --no-ssh-key
 }
 
 function destroy_cluster() {
