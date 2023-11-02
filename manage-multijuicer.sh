@@ -46,6 +46,11 @@ MANAGE_CLUSTER=${MANAGE_CLUSTER:-0}
 MANAGE_MONITORING=${MANAGE_MONITORING:-0}
 # Whether to configure the CTFd deployment. Defaults to true
 MANAGE_CTFD=${MANAGE_CTFD:-1}
+# MultiJuicer helm chart version, https://github.com/juice-shop/multi-juicer/releases
+MULTIJUICER_VERSION=${MULTIJUICER_VERSION:-7.0.1}
+# CTFd helm chart version, https://github.com/bman46/CTFd-Helm/releases
+CTFD_VERSION=${CTFD_VERSION:-v0.8.4}
+
 
 # Change locale to make "</dev/urandom tr -dc" work on Mac
 OS=`uname`
@@ -189,6 +194,7 @@ function deploy_multi_juicer() {
     # Use helm to deploy the multi-juicer chart, overriding the values (see juicer.yaml)
     helm upgrade --install multi-juicer \
         oci://ghcr.io/juice-shop/multi-juicer/helm/multi-juicer \
+        --version "$MULTIJUICER_VERSION" \
         --values juicer.yaml \
         --set balancer.cookie.cookieParserSecret="$COOKIE_SECRET" \
         --set balancer.replicas="$BALANCER_REPLICAS" \
@@ -409,6 +415,7 @@ function deploy_ctfd() {
     # Use helm to deploy the CTFd chart, overriding the values (see ctfd.yaml)
     helm upgrade --install ctfd \
         oci://ghcr.io/bman46/ctfd/ctfd \
+        --version "$CTFD_VERSION" \
         --values ctfd.yaml \
         --set redis.auth.password="$CTFD_REDIS_PASS" \
         --set mariadb.auth.rootPassword="$CTFD_MYSQL_ROOT_PASS" \
