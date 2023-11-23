@@ -3,6 +3,16 @@ set -euo pipefail
 
 SCRIPT_NAME=$(basename "$0")
 
+### Required variables ###
+# The subscription ID (required)
+export AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:?Missing required environment variable.}"
+# Name of the resource group (required)
+export AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:?Missing required environment variable.}"
+# Name of the service principal (required)
+export AZURE_SERVICE_PRINCIPAL_NAME="${AZURE_SERVICE_PRINCIPAL_NAME:?Missing required environment variable.}"
+# Name of the admin Azure AD group
+export AZURE_ADMIN_AAD_GROUP="${AZURE_ADMIN_AAD_GROUP:?Missing required environment variable.}"
+
 function usage() {
     echo -e "Usage: ./$SCRIPT_NAME COMMAND
 
@@ -42,24 +52,24 @@ ARGS=("$@")
 COMMAND="${ARGS[0]}"
 
 function create_app_registration() {
-    info "Creating app registration '$SERVICE_PRINCIPAL_NAME'"
+    info "Creating app registration '$AZURE_SERVICE_PRINCIPAL_NAME'"
     # Create the app registration
-    az ad app create --display-name "$SERVICE_PRINCIPAL_NAME"
+    az ad app create --display-name "$AZURE_SERVICE_PRINCIPAL_NAME"
 }
 
 function destroy_app_registration() {
-    info "Deleting the app registration (and service principal) '$SERVICE_PRINCIPAL_NAME'"
+    info "Deleting the app registration (and service principal) '$AZURE_SERVICE_PRINCIPAL_NAME'"
     # Get the app registration ID
-    APP_ID=$(az ad app list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
+    APP_ID=$(az ad app list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
 
     # Delete the app registration
     az ad app delete --id "$APP_ID"
 }
 
 function create_service_principal() {
-    info "Creating the service principal '$SERVICE_PRINCIPAL_NAME'"
+    info "Creating the service principal '$AZURE_SERVICE_PRINCIPAL_NAME'"
     # Get the app (client) ID
-    APP_ID=$(az ad app list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].appId" -o tsv)
+    APP_ID=$(az ad app list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].appId" -o tsv)
 
     # Create the service principal
     az ad sp create --id "$APP_ID"
@@ -67,17 +77,17 @@ function create_service_principal() {
 
 function set_owners() {
     # Get the app (client) ID
-    APP_ID=$(az ad app list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].appId" -o tsv)
-    OBJECT_ID=$(az ad sp list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
+    APP_ID=$(az ad app list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].appId" -o tsv)
+    OBJECT_ID=$(az ad sp list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
 
-    info "Getting members from AAD group '$ADMIN_AAD_GROUP'"
+    info "Getting members from AAD group '$AZURE_ADMIN_AAD_GROUP'"
     # Gets the owners and converts the multiline output to an array
     SAVEIFS="$IFS"
     IFS=$'\n'
-    OWNERS=($(az ad group member list -g "$ADMIN_AAD_GROUP" --query "[].id" -o tsv))
+    OWNERS=($(az ad group member list -g "$AZURE_ADMIN_AAD_GROUP" --query "[].id" -o tsv))
     IFS="$SAVEIFS"
 
-    info "Setting owners for service principal '$SERVICE_PRINCIPAL_NAME' - will give Bad Request error if owner is already present"
+    info "Setting owners for service principal '$AZURE_SERVICE_PRINCIPAL_NAME' - will give Bad Request error if owner is already present"
     for OWNER in "${OWNERS[@]}"; do
         info "  owner with ID $OWNER"
         # Add owner to app registration
@@ -93,34 +103,34 @@ function set_owners() {
 }
 
 function create_role_assignment() {
-    info "Assigning role 'contributor' on resource group '$RESOURCE_GROUP' to '$SERVICE_PRINCIPAL_NAME'"
+    info "Assigning role 'contributor' on resource group '$AZURE_RESOURCE_GROUP' to '$AZURE_SERVICE_PRINCIPAL_NAME'"
     # Get the service principal object ID
-    SERVICE_PRINCIPAL_OBJECT_ID=$(az ad sp list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
+    SERVICE_PRINCIPAL_OBJECT_ID=$(az ad sp list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
 
     # Create the role assignment
     az role assignment create \
         --role contributor \
         --assignee-object-id "$SERVICE_PRINCIPAL_OBJECT_ID" \
         --assignee-principal-type ServicePrincipal \
-        --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP"
+        --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$AZURE_RESOURCE_GROUP"
 }
 
 function destroy_role_assignment() {
-    info "Deleting the 'contributor' role assignment on '$RESOURCE_GROUP' for '$SERVICE_PRINCIPAL_NAME'"
+    info "Deleting the 'contributor' role assignment on '$AZURE_RESOURCE_GROUP' for '$AZURE_SERVICE_PRINCIPAL_NAME'"
     # Get the service principal object ID
-    SERVICE_PRINCIPAL_OBJECT_ID=$(az ad sp list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
+    SERVICE_PRINCIPAL_OBJECT_ID=$(az ad sp list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
 
     # Deleting the role assignment
     az role assignment delete \
         --role contributor \
         --assignee "$SERVICE_PRINCIPAL_OBJECT_ID" \
-        --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP"
+        --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$AZURE_RESOURCE_GROUP"
 }
 
 function create_federated_credential() {
-    info "Creating federated credential for '$SERVICE_PRINCIPAL_NAME'"
+    info "Creating federated credential for '$AZURE_SERVICE_PRINCIPAL_NAME'"
     # Get the app registration object ID
-    APP_OBJECT_ID=$(az ad app list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
+    APP_OBJECT_ID=$(az ad app list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
 
     # Create the federated credential
     az rest --method POST \
@@ -133,9 +143,9 @@ function create_federated_credential() {
 }
 
 function print_app_registration_id() {
-    info "Getting the app registration client ID for '$SERVICE_PRINCIPAL_NAME'"
+    info "Getting the app registration client ID for '$AZURE_SERVICE_PRINCIPAL_NAME'"
     # Get the app (client) ID
-    APP_ID=$(az ad app list --filter "displayname eq '$SERVICE_PRINCIPAL_NAME'" --query "[].appId" -o tsv)
+    APP_ID=$(az ad app list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].appId" -o tsv)
 
     info "################################################################"
     info "## App client ID is '$APP_ID'    ##"
