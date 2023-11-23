@@ -3,6 +3,10 @@ set -euo pipefail
 
 SCRIPT_NAME=$(basename "$0")
 
+### Required variables ###
+# Key used to generate the challenge flags. Should be rotated between CTF-events
+CTF_KEY="${CTF_KEY:?Missing required environment variable.}"
+
 # JuiceShop CLI command
 _JUICESHOP_CLI_BINARY="juice-shop-ctf"
 _JUICESHOP_CLI_PACKAGE="$_JUICESHOP_CLI_BINARY-cli"

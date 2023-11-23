@@ -11,6 +11,8 @@ CTF_KEY="${CTF_KEY:?Missing required environment variable.}"
 COOKIE_SECRET="${COOKIE_SECRET:?Missing required environment variable.}"
 # Secret for the CTFd instance
 CTFD_SECRET_KEY="${CTFD_SECRET_KEY:?Missing required environment variable.}"
+# Name of the resource group to use/create.
+RESOURCE_GROUP="${RESOURCE_GROUP:?Missing required environment variable.}"
 
 ### Default variables ###
 ## Azure / Cluster
@@ -18,8 +20,6 @@ CTFD_SECRET_KEY="${CTFD_SECRET_KEY:?Missing required environment variable.}"
 DNS_NAME="${DNS_NAME:-bvt-juice}"
 # Region in which to deploy the services
 LOCATION="${LOCATION:-norway-east}"
-# Name of the resource group to use/create.
-RESOURCE_GROUP="${RESOURCE_GROUP:-MultiJuicer}"
 # Name to use for the cluster
 CLUSTER_NAME="${CLUSTER_NAME:-juicy-k8s}"
 # Name to use for the container registry
