@@ -14,7 +14,7 @@
 
 ### Authenticate against Azure
 ```bash
-# Log in to Azure CLI with your Bouvet account
+# Log in to Azure CLI with your account
 # A new tab will open in your browser, asking you to authenticate
 az login
 
@@ -185,7 +185,7 @@ Make sure that you've authenticated against Azure first. See [Authenticate again
         # Get the resource ID of the Public IP resource
         PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$PUBLIC_IP')].[id]" --output tsv)
 
-        # Add the hostname <DNS_NAME> to the Public IP resource 
+        # Add the hostname <DNS_NAME> to the Public IP resource
         az network public-ip update --ids $PUBLIC_IP_ID --dns-name $DNS_NAME
         ```
 
