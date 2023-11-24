@@ -37,6 +37,19 @@ if [ "$OS" = 'Darwin' ]; then
     export LC_CTYPE=C
 fi
 
+__REQUIRED_BINARIES=(
+    "helm"
+    "kubectl"
+    "envsubst"
+)
+# Check that all required binaries are present
+for __REQ_PKG in "${__REQUIRED_BINARIES[@]}"; do
+    if ! which "$__REQ_PKG" &> /dev/null ; then
+        echo "ERROR: Missing required package '$__REQ_PKG'"
+        exit 1
+    fi
+done
+
 # Whether to delete PVCs (Persistent Volume Claims) when running 'down'
 # If no MYSQL/Redis password is supplied, it will be random-generated, and as such will result in failure when running 'up',
 # as a new password will be generated which does not match the persisted database password.
