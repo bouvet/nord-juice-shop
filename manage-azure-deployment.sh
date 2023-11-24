@@ -198,6 +198,7 @@ function down() {
         destroy_resource_group && success || failure
     fi
     get_cluster_credentials 2> /dev/null || true
+    destroy_dns_record
     # Manage the cluster itself
     if [ "$MANAGE_CLUSTER" -eq 1 ]; then
         destroy_cluster && success || failure
