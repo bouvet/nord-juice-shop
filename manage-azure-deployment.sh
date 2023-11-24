@@ -146,7 +146,7 @@ function create_keyvault() {
 
 function delete_keyvault() {
     info "Deleting the Azure Key Vault '$KEY_VAULT_NAME'"
-    az keyvault delete --location "$LOCATION" --name "$KEY_VAULT_NAME" --resource-group "$AZURE_RESOURCE_GROUP"
+    az keyvault delete --name "$KEY_VAULT_NAME" --resource-group "$AZURE_RESOURCE_GROUP"
 }
 
 function get_credentials() {
