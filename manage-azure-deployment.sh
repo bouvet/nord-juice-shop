@@ -7,8 +7,8 @@ SCRIPT_NAME=$(basename "$0")
 ### Required variables ###
 # Name of the resource group to use/create.
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:?Missing required environment variable.}"
-# Hostname, used as <DNS_NAME>.<LOCATION>.cloudapp.azure.com
-DNS_NAME="${DNS_NAME:?Missing required environment variable.}"
+# Hostname, used as <AZURE_DNS_NAME>.<LOCATION>.cloudapp.azure.com
+AZURE_DNS_NAME="${AZURE_DNS_NAME:?Missing required environment variable.}"
 
 ### Default variables ###
 ## Azure / Cluster
@@ -123,8 +123,8 @@ function configure_dns_record() {
     # Get the resource ID of the Public IP resource
     PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$PUBLIC_IP')].[id]" --output tsv)
 
-    # Add the hostname <DNS_NAME> to the Public IP resource
-    az network public-ip update --ids "$PUBLIC_IP_ID" --dns-name "$DNS_NAME" 2>/dev/null || true
+    # Add the hostname <AZURE_DNS_NAME> to the Public IP resource
+    az network public-ip update --ids "$PUBLIC_IP_ID" --dns-name "$AZURE_DNS_NAME" 2>/dev/null || true
 }
 
 function destroy_dns_record() {
