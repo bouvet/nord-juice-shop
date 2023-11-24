@@ -36,8 +36,8 @@ function usage() {
         down\tScale down the cluster to save resources (keeps the AKS resource itself intact)
         up\tSpin the cluster back up, scaling up the resources
         wipe\tWipe it, deleting all services including the cluster and key vault
-        dns\tConfigure the DNS record for the NGINX controller deployed by 'manage-multijuicer.sh'
-        password\tRetrieve the admin password for the MultiJuicer instance
+        config\tRun post-deployment configurations, including creating the DNS record in Azure
+        password\tRetrieve the admin password for the multi-juicer instance
     "
     exit 0
 }
@@ -156,18 +156,33 @@ function get_cluster_credentials() {
     az aks get-credentials --resource-group "$AZURE_RESOURCE_GROUP" --name "$CLUSTER_NAME" --overwrite-existing
 }
 
+function __kv_exists() {
+    # Helper function to check if the Azure Key Vault '$KEY_VAULT_NAME' exists
+    az keyvault show --resource-group "$AZURE_RESOURCE_GROUP" --name "$KEY_VAULT_NAME" &> /dev/null
+}
+
+function write_secrets_to_keyvault() {
+    info "Writing secrets to the Azure Key Vault '$KEY_VAULT_NAME'"
+    if __kv_exists; then
+        # Push the CTFd DB password to the key vault
+        __CTFD_DB_PASS=$(kubectl get secrets ctfd-mariadb -o=jsonpath='{.data.mariadb-password}' | base64 --decode)
+        az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "ctfd-db-password" --value "$__CTFD_DB_PASS"
+        # Push the CTFd DB root password to the key vault
+        __CTFD_DB_ROOT_PASS=$(kubectl get secrets ctfd-mariadb -o=jsonpath='{.data.mariadb-root-password}' | base64 --decode)
+        az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "ctfd-db-password" --value "$__CTFD_DB_ROOT_PASS"
+        # Push the multi-juicer admin password to the key vault
+        get_multi_juicer_admin_password
+        az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "multijuicer-admin-password" --value "$MULTI_JUICER_PASS"
+    else
+        failure "The keyvault '$KEY_VAULT_NAME' does not exist. It can be created automatically by setting 'MANAGE_KEYVAULT=1'"
+    fi
+}
+
 function get_multi_juicer_admin_password() {
     # Get the multi-juicer admin password
     MULTI_JUICER_PASS=$(kubectl get secrets juice-balancer-secret -o=jsonpath='{.data.adminPassword}' | base64 --decode)
     if [ -z "$MULTI_JUICER_PASS" ]; then
         failure "Failed to retrieve the multi-juicer admin password"
-        exit 1
-    fi
-    if [ "$MANAGE_KEYVAULT" -eq 1 ]; then
-        # Push the password to the key vault
-        az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "multijuicer-admin-password" --value "$MULTI_JUICER_PASS"
-    else
-        info "Admin password:\n$MULTI_JUICER_PASS"
     fi
 }
 
@@ -212,10 +227,11 @@ function down() {
     info "DONE"
 }
 
-function configure_dns() {
-    info "Configuring the DNS record"
+function post_configuration() {
+    info "Running post-deployment configuration tasks"
     get_cluster_credentials
     configure_dns_record && success
+    write_secrets_to_keyvault && success
     info "DONE"
 }
 
@@ -223,6 +239,7 @@ function get_admin_password() {
     info "Retrieving the admin password for the multi-juicer instance"
     get_cluster_credentials
     get_multi_juicer_admin_password
+    info "Admin password:\n$MULTI_JUICER_PASS"
     info "DONE"
 }
 
@@ -247,8 +264,8 @@ case "$COMMAND" in
         MANAGE_KEYVAULT=1
         down
         ;;
-    "dns")
-        configure_dns
+    "config" | "cfg")
+        post_configuration
         ;;
     "password")
         get_admin_password
