@@ -130,13 +130,15 @@ function configure_dns_record() {
 function destroy_dns_record() {
     info "Deleting the DNS record"
      # Get the public IP of the NGINX ingress controller
-    PUBLIC_IP=$(kubectl --namespace default get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller)
+    PUBLIC_IP=$(kubectl --namespace default get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller || true)
 
-    # Get the resource ID of the Public IP resource
-    PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$PUBLIC_IP')].[id]" --output tsv)
+    if [ -n "$PUBLIC_IP" ]; then
+        # Get the resource ID of the Public IP resource
+        PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$PUBLIC_IP')].[id]" --output tsv)
 
-    # Delete the public IP record
-    az network public-ip delete --ids "$PUBLIC_IP_ID"
+        # Delete the public IP record
+        az network public-ip delete --ids "$PUBLIC_IP_ID"
+    fi
 }
 
 function create_keyvault() {
