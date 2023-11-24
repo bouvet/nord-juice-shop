@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - bvt-juice.norwayeast.cloudapp.azure.com
+    - $JUICE_FQDN
     secretName: juice-tls-secret
   rules:
-  - host: bvt-juice.norwayeast.cloudapp.azure.com
+  - host: $JUICE_FQDN
     http:
       paths:
         - path: /ctfd

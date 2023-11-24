@@ -11,6 +11,8 @@ CTF_KEY="${CTF_KEY:?Missing required environment variable.}"
 COOKIE_SECRET="${COOKIE_SECRET:?Missing required environment variable.}"
 # Secret for the CTFd instance
 CTFD_SECRET_KEY="${CTFD_SECRET_KEY:?Missing required environment variable.}"
+# FQDN (Fully Qualified Domain Name) at which the setup is accessible (used for TLS)
+JUICE_FQDN="${JUICE_FQDN:?Missing required environment variable.}"
 
 ### Default variables ###
 ## MultiJuicer / JuiceShop
@@ -231,7 +233,7 @@ function apply_cluster_issuer() {
 
 function apply_ingress() {
     info "Configuring ingress"
-    kubectl apply -f ingress.yaml --namespace default
+    < ingress.yaml envsubst | kubectl apply --namespace default -f -
 }
 
 function deploy_monitoring() {
