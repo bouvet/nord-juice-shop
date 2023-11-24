@@ -5,13 +5,13 @@ SCRIPT_NAME=$(basename "$0")
 
 ### Required variables ###
 # The subscription ID (required)
-export AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:?Missing required environment variable.}"
+AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:?Missing required environment variable.}"
 # Name of the resource group (required)
-export AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:?Missing required environment variable.}"
+AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:?Missing required environment variable.}"
 # Name of the service principal (required)
-export AZURE_SERVICE_PRINCIPAL_NAME="${AZURE_SERVICE_PRINCIPAL_NAME:?Missing required environment variable.}"
+AZURE_SERVICE_PRINCIPAL_NAME="${AZURE_SERVICE_PRINCIPAL_NAME:?Missing required environment variable.}"
 # Name of the admin Azure AD group
-export AZURE_ADMIN_AAD_GROUP="${AZURE_ADMIN_AAD_GROUP:?Missing required environment variable.}"
+AZURE_ADMIN_AAD_GROUP="${AZURE_ADMIN_AAD_GROUP:?Missing required environment variable.}"
 
 function usage() {
     echo -e "Usage: ./$SCRIPT_NAME COMMAND
