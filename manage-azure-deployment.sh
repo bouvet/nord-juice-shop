@@ -151,7 +151,7 @@ function delete_keyvault() {
     az keyvault delete --name "$KEY_VAULT_NAME" --resource-group "$AZURE_RESOURCE_GROUP"
 }
 
-function get_credentials() {
+function get_cluster_credentials() {
     # Retrieve the credentials for the cluster
     az aks get-credentials --resource-group "$AZURE_RESOURCE_GROUP" --name "$CLUSTER_NAME" --overwrite-existing
 }
@@ -187,7 +187,7 @@ function up() {
     if [ "$MANAGE_KEYVAULT" -eq 1 ]; then
         create_keyvault && success
     fi
-    get_credentials
+    get_cluster_credentials
     info "DONE"
 }
 
@@ -197,7 +197,7 @@ function down() {
     if [ "$MANAGE_RG" -eq 1 ]; then
         destroy_resource_group && success || failure
     fi
-    get_credentials 2> /dev/null || true
+    get_cluster_credentials 2> /dev/null || true
     # Manage the cluster itself
     if [ "$MANAGE_CLUSTER" -eq 1 ]; then
         destroy_cluster && success || failure
@@ -213,14 +213,14 @@ function down() {
 
 function configure_dns() {
     info "Configuring the DNS record"
-    get_credentials
+    get_cluster_credentials
     configure_dns_record && success
     info "DONE"
 }
 
 function get_admin_password() {
     info "Retrieving the admin password for the multi-juicer instance"
-    get_credentials
+    get_cluster_credentials
     get_multi_juicer_admin_password
     info "DONE"
 }
