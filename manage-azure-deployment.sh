@@ -169,7 +169,7 @@ function write_secrets_to_keyvault() {
         az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "ctfd-db-password" --value "$__CTFD_DB_PASS"
         # Push the CTFd DB root password to the key vault
         __CTFD_DB_ROOT_PASS=$(kubectl get secrets ctfd-mariadb -o=jsonpath='{.data.mariadb-root-password}' | base64 --decode)
-        az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "ctfd-db-password" --value "$__CTFD_DB_ROOT_PASS"
+        az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "ctfd-db-root-password" --value "$__CTFD_DB_ROOT_PASS"
         # Push the multi-juicer admin password to the key vault
         get_multi_juicer_admin_password
         az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name "multijuicer-admin-password" --value "$MULTI_JUICER_PASS"
