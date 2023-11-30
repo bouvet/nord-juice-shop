@@ -1,6 +1,7 @@
 # Override values for MultiJuicer.
 # See defaults at https://github.com/juice-shop/multi-juicer/blob/main/helm/multi-juicer/values.yaml
 # See production recommendations at https://github.com/juice-shop/multi-juicer/blob/main/guides/production-notes/production-notes.md
+# Certain values in this file, such as secrets, are overridden by the `manage-multijuicer.sh` script
 
 balancer:
   cookie:
@@ -9,7 +10,7 @@ balancer:
     # -- Sets the secure attribute on cookie so that it only be send over https
     secure: true
     # -- Set this to a fixed random alpa-numeric string (recommended length 24 chars). If not set this get randomly generated with every helm upgrade, each rotation invalidates all active cookies / sessions requirering users to login again.
-    cookieParserSecret: 'YWZhMTc3NTlhODlkODA2ODBl'
+    cookieParserSecret: null
   # -- Number of replicas of the juice-balancer deployment
   replicas: 3
 
@@ -30,14 +31,14 @@ balancer:
     basicAuth:
       username: prometheus-scraper
       # -- Should be changed when metrics are enabled. Overridden with --set in the manage-multijuicer.sh script.
-      password: ouUiyF3jgH2zxrKFYaMGGEppBB5tbLSj
+      password: null
 
 juiceShop:
   # -- Specifies how many JuiceShop instances MultiJuicer should start at max. Set to -1 to remove the max Juice Shop instance cap
   maxInstances: 5
   tag: v15.2.1
-  # -- Change the key when hosting a CTF event. This key gets used to generate the challenge flags. See: https://pwning.owasp-juice.shop/part1/ctf.html#overriding-the-ctfkey
-  ctfKey: "48yG26ZxFpsfAroewUf@jj$ML#R9&FMx"
+  # -- Change the key when hosting a CTF event. This key gets used to generate the challenge flags. See: https://pwning.owasp-juice.shop/companion-guide/latest/part4/ctf.html#_overriding_the_ctf_key
+  ctfKey: null
   # -- Specify a custom Juice Shop config.yaml. See the JuiceShop Config Docs for more detail: https://pwning.owasp-juice.shop/companion-guide/latest/part4/customization.html#_yaml_configuration_file
   config: |
     application:
