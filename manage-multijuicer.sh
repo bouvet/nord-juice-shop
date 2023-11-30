@@ -34,6 +34,8 @@ MANAGE_CTFD=${MANAGE_CTFD:-1}
 MULTIJUICER_VERSION=${MULTIJUICER_VERSION:-7.0.1}
 # CTFd helm chart version, https://github.com/bman46/CTFd-Helm/releases
 CTFD_VERSION=${CTFD_VERSION:-v0.8.4}
+# JuiceShop version
+JUICESHOP_VERSION=${JUICESHOP_VERSION:-v15.3.0}
 
 # Change locale to make "</dev/urandom tr -dc" work on Mac
 OS=$(uname)
@@ -154,6 +156,7 @@ function deploy_multi_juicer() {
         --set balancer.metrics.serviceMonitor.enabled="$__MONITORING_ENABLED" \
         --set balancer.metrics.basicAuth.username="$METRICS_USER" \
         --set balancer.metrics.basicAuth.password="$METRICS_PASS" \
+        --set juiceShop.tag="$JUICESHOP_VERSION" \
         --set juiceShopCleanup.gracePeriod="$GRACE_PERIOD"
 }
 
