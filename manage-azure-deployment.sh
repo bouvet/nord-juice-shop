@@ -13,7 +13,7 @@ AZURE_DNS_NAME="${AZURE_DNS_NAME:?Missing required environment variable.}"
 ### Default variables ###
 ## Azure / Cluster
 # Region in which to deploy the services
-LOCATION="${LOCATION:-norway-east}"
+LOCATION="${LOCATION:-norwayeast}"
 # Name to use for the cluster
 CLUSTER_NAME="${CLUSTER_NAME:-juicy-k8s}"
 # Number of nodes for the cluster
