@@ -15,6 +15,17 @@ AZURE_SERVICE_PRINCIPAL_NAME="${AZURE_SERVICE_PRINCIPAL_NAME:?Missing required e
 # The Github repository in which the code is stored. Used to create a federated credential for the service principal. In the format <USER|ORGANIZATION>/<REPOSITORY_NAME>.
 GIT_REPO=""
 
+__REQUIRED_BINARIES=(
+    "az"
+)
+# Check that all required binaries are present
+for __REQ_PKG in "${__REQUIRED_BINARIES[@]}"; do
+    if ! which "$__REQ_PKG" &> /dev/null ; then
+        echo "ERROR: Missing required package '$__REQ_PKG'"
+        exit 1
+    fi
+done
+
 function usage() {
     echo -e "Usage: ./$SCRIPT_NAME COMMAND
 
