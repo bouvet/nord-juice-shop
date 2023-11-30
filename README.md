@@ -1,230 +1,193 @@
 # Nord Juice Shop
 
-- https://ctfd.io/
-- https://github.com/CTFd/CTFd
-- https://owasp.org/www-project-juice-shop/
-- https://github.com/juice-shop/multi-juicer
-- https://jmatch.medium.com/multijuicer-a-brilliant-way-to-deliver-remote-cyber-security-workshops-ctf-events-c70942bc2f9b
-- https://github.com/equinor/juiceshop-ctfd
+## Prerequisites
 
-## Deployment
-### Prerequisites
+### Packages & Services
+- [A Kubernetes cluster](https://kubernetes.io/) (or [an Azure subscription](#creating-a-kubernetes-cluster-in-azure))
 - [Helm](https://helm.sh/docs/intro/install/)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl)
 
-### Authenticate against Azure
-```bash
-# Log in to Azure CLI with your account
-# A new tab will open in your browser, asking you to authenticate
-az login
-
-# Set the subscription in which you wish to deploy Multi-Juicer
-az account set -s <subscription_id | subscription_name>
+### Environment variables
+```sh
+# Copy the example environment variable file .env
+cp .env .env.local
 ```
+Modify the values in the file to your liking. Required variables are marked as `(required)`:
+- `CTF_KEY`: A key used to generate challenge flags. Should be rotated between CTF-events to ensure unique flags.
+- `COOKIE_SECRET`: Secret used for the cookie.
+- `CTFD_SECRET_KEY`: Secret key used by the CTFd instance.
+- `JUICE_FQDN`: The domain name at which the setup will be reachable. A DNS record must exist and be publicly reachable for TLS certificate acquisition and routing to work.
 
-### Using the script [`manage-multijuicer.sh`](./manage-multijuicer.sh)
-> Modify the environment variables in `.env` to your liking
->
-> Modify the values in the YAML files as per your needs
->
-> Make sure that you've followed the steps in [Authenticate against Azure](#authenticate-against-azure) first
+Optionally specify the max. number of JuiceShop instances that can be created by setting the variabel `MAX_INSTANCES`, or any other variables you wish to modify.
 
-> NB: Make sure to source the `.env` file prior to running!
+> :exclamation: Make sure to *source* the environment variable file you just created before proceeding!
 
-To create a brand new cluster with all services, including an Azure Container Registry, run:
-```bash
-./manage-multijuicer.sh new
-```
+## Running
 
-To update an existing cluster, or redeploy one that was previously taken down using `./manage-multijuicer.sh down`, run:
-```bash
-./manage-multijuicer.sh up
-```
+### Deploying the CTF services
+*Deployment of the CTF services (i.e. MultiJuicer and CTFd) is done using the script [`manage-multijuicer.sh`](./manage-multijuicer.sh)*
 
-To stop a running cluster, run:
-```bash
-./manage-multijuicer.sh down
-```
+#### Prerequisites
+- Access to a Kubernetes cluster, and having activated that context in your `kubectl` config
 
-To perform a full wipe (deletes all services, incl. the container registry), run:
-```bash
-./manage-multijuicer.sh wipe
-```
-
-#### Help
 ```bash
 ./manage-multijuicer.sh -h
 Usage: ./manage-multijuicer.sh COMMAND
 
     Commands:
-        new         Deploy a brand new cluster
-        down       Stop all running containers
-        up            Spin it back up
-        wipe        Wipe it, deleting all services including the cluster
+        up      Deploy the MultiJuicer and CTFd services in the Kubernetes cluster
+        down    Remove the MultiJuicer and CTFd services from the Kubernetes cluster
 
 ```
 
-### Manual (Azure Kubernetes Service)
-> Make sure that you've installed [Azure CLI](https://learn.microsoft.com/en-us/dotnet/azure/install-azure-cli) first
+```bash
+# Deploy the services
+./manage-multijuicer.sh up
+# The MultiJuicer service should now be available at `JUICE_FQDN`,
+# while CTFd should be available at `JUICE_FQDN/ctfd`
 
-These steps are based on [this guide](https://github.com/juice-shop/multi-juicer/blob/main/guides/azure/azure.md)
+# Shut down the services
+./manage-multijuicer.sh down
+```
 
-Make sure that you've authenticated against Azure first. See [Authenticate against Azure](#authenticate-against-azure)
+### Creating a Kubernetes cluster in Azure
+*Creation of a Kubernetes cluster in Azure Kubernetes Service (AKS) is done using the script [`manage-azure-deployment.sh`](./manage-azure-deployment.sh). The script may also be used to create a Resource Group and a Key Vault.*
 
-1. Create the Kubernetes cluster
-    ```bash
-    # Determine the resource group in which the resources should be deployed.
-    # If you wish to create a new resource group, run
-    az group create --location norway-east --name MultiJuicer
+#### Prerequisites
 
-    # Create an AKS cluster in the resource group determined above
-    az aks create --resource-group MultiJuicer --name juicy-k8s --node-count 2
+##### Packages & Services
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/)
 
-    # Retrieve the credentials for the new cluster
-    az aks get-credentials --resource-group MultiJuicer --name juicy-k8s
+##### Authenticate against Azure
+```bash
+# Log in to Azure CLI with your account
+# A new tab will open in your browser, asking you to authenticate
+az login
 
-    # Verify that you've authenticated against the new cluster - should display 'juicy-k8s'
-    kubectl config current-context
-    ```
+# Set the subscription in which you wish to deploy the services
+az account set -s <subscription_id | subscription_name>
+```
 
-2. Set up multi-juicer
-    ```bash
-    # Add the helm repository for multi-juicer
-    helm repo add multi-juicer https://juice-shop.github.io/multi-juicer/
+##### Environment variables
+Modify the environment variables in the file you copied in [Environment variables](#environment-variables). Required variables are marked as `(required)`:
+- `AZURE_DNS_NAME`: The hostname used for the NGINX ingress service. Must be unique within a zone.
+- `AZURE_SUBSCRIPTION_ID`: The subscription ID of your Azure subscription.
+- `AZURE_RESOURCE_GROUP`: A pre-existing resource group. The script may create it for you, if you set `MANAGE_RG=1`.
 
-    # Use helm to deploy the multi-juicer chart, overriding the values (see juicer.yaml)
-    helm upgrade --install multi-juicer multi-juicer/multi-juicer --values juicer.yaml
+Specify which services the script should manage (in addition to the cluster):
+- `MANAGE_RG`: If not specified, you must make sure that a resource group with the name `AZURE_RESOURCE_GROUP` exists.
+- `MANAGE_KEYVAULT`
 
-    # Kubernetes will now spin up the pods
-    # Verify that everything is starting
-    kubectl get pods
-    # Wait until both pods are ready
+> :warning: Make sure that the resource group `AZURE_RESOURCE_GROUP` exists prior to running, or set `MANAGE_RG=1`.
 
-    # Retrieve the password for the admin UI
-    kubectl get secrets juice-balancer-secret -o=jsonpath='{.data.adminPassword}' | base64 --decode
-    # To log in to the admin dashboard, visit /balancer and log in as the team 'admin'
-    ```
+> :exclamation: Make sure to *source* the environment variable file you just created before proceeding!
 
-- [Optional] Verify that the application is running correctly
-    - See [Verify the app is running correctly](https://github.com/juice-shop/multi-juicer/blob/main/guides/azure/azure.md#step-3-verify-the-app-is-running-correctly)
+```bash
+./manage-azure-deployment.sh -h
+Usage: ./manage-azure-deployment.sh COMMAND
 
-3. Configure Ingress and TLS
-    1. Create a Container Registry for the NGINX and cert-manager images
-        ```bash
-        # Create the Container Registry
-        az acr create --name bvtmultijuicer --resource-group MultiJuicer --sku Basic
+    Commands:
+        new     Deploy a brand new cluster
+        up      Spin the cluster back up, scaling up the resources
+        down    Scale down the cluster to save resources (keeps the AKS resource itself intact)
+        wipe    Removes the cluster
+        wipe-all        Removes the cluster, resource group, and key vault.
+        config  Run post-deployment configurations, including creating the DNS record in Azure
+        password        Retrieve the admin password for the multi-juicer instance
 
-        # Attach the Container Registry to the Kubernetes cluster
-        # NB: Requires Owner permissions on the Azure subscription
-        az aks update --name juicy-k8s --resource-group MultiJuicer --attach-acr bvtmultijuicer
-        ```
+```
 
-    2. Import the NGINX and cert-manager images
-        ```bash
-        REGISTRY_NAME=bvtmultijuicer
-        SOURCE_REGISTRY=registry.k8s.io
-        CONTROLLER_IMAGE=ingress-nginx/controller
-        CONTROLLER_TAG=v1.0.4
-        PATCH_IMAGE=ingress-nginx/kube-webhook-certgen
-        PATCH_TAG=v1.1.1
-        DEFAULTBACKEND_IMAGE=defaultbackend-amd64
-        DEFAULTBACKEND_TAG=1.5
-        CERT_MANAGER_REGISTRY=quay.io
-        CERT_MANAGER_TAG=v1.5.4
-        CERT_MANAGER_IMAGE_CONTROLLER=jetstack/cert-manager-controller
-        CERT_MANAGER_IMAGE_WEBHOOK=jetstack/cert-manager-webhook
-        CERT_MANAGER_IMAGE_CAINJECTOR=jetstack/cert-manager-cainjector
+```bash
+# Creating a new cluster
+./manage-azure-deployment.sh new
 
-        az acr import --name $REGISTRY_NAME --source $SOURCE_REGISTRY/$CONTROLLER_IMAGE:$CONTROLLER_TAG --image $CONTROLLER_IMAGE:$CONTROLLER_TAG
-        az acr import --name $REGISTRY_NAME --source $SOURCE_REGISTRY/$PATCH_IMAGE:$PATCH_TAG --image $PATCH_IMAGE:$PATCH_TAG
-        az acr import --name $REGISTRY_NAME --source $SOURCE_REGISTRY/$DEFAULTBACKEND_IMAGE:$DEFAULTBACKEND_TAG --image $DEFAULTBACKEND_IMAGE:$DEFAULTBACKEND_TAG
-        az acr import --name $REGISTRY_NAME --source $CERT_MANAGER_REGISTRY/$CERT_MANAGER_IMAGE_CONTROLLER:$CERT_MANAGER_TAG --image $CERT_MANAGER_IMAGE_CONTROLLER:$CERT_MANAGER_TAG
-        az acr import --name $REGISTRY_NAME --source $CERT_MANAGER_REGISTRY/$CERT_MANAGER_IMAGE_WEBHOOK:$CERT_MANAGER_TAG --image $CERT_MANAGER_IMAGE_WEBHOOK:$CERT_MANAGER_TAG
-        az acr import --name $REGISTRY_NAME --source $CERT_MANAGER_REGISTRY/$CERT_MANAGER_IMAGE_CAINJECTOR:$CERT_MANAGER_TAG --image $CERT_MANAGER_IMAGE_CAINJECTOR:$CERT_MANAGER_TAG
-        ```
+# 'Turn on' a cluster previously taken down with the 'down' command (see below).
+./manage-azure-deployment.sh up
 
-    3. Set up an NGINX Ingress controller
-        ```bash
-        # Add the helm repository for ingress-nginx
-        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+# Shut down the cluster, but keep the AKS resource intact - intended for when you plan to spin it back up within a short time.
+./manage-azure-deployment.sh down
 
-        # Set the URL of the ACR we created in step 4.1
-        ACR_URL=bvtmultijuicer.azurecr.io
+# Shut down the cluster and remove the AKS resource.
+./manage-azure-deployment.sh wipe
 
-        # Use helm to deploy the NGINX ingress controller
-        helm install nginx-ingress ingress-nginx/ingress-nginx \
-            --version 4.0.13 \
-            --namespace default --create-namespace \
-            --set controller.replicaCount=2 \
-            --set controller.nodeSelector."kubernetes\.io/os"=linux \
-            --set controller.image.registry=$ACR_URL \
-            --set controller.image.image=$CONTROLLER_IMAGE \
-            --set controller.image.tag=$CONTROLLER_TAG \
-            --set controller.image.digest="" \
-            --set controller.admissionWebhooks.patch.nodeSelector."kubernetes\.io/os"=linux \
-            --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz \
-            --set controller.admissionWebhooks.patch.image.registry=$ACR_URL \
-            --set controller.admissionWebhooks.patch.image.image=$PATCH_IMAGE \
-            --set controller.admissionWebhooks.patch.image.tag=$PATCH_TAG \
-            --set controller.admissionWebhooks.patch.image.digest="" \
-            --set defaultBackend.nodeSelector."kubernetes\.io/os"=linux \
-            --set defaultBackend.image.registry=$ACR_URL \
-            --set defaultBackend.image.image=$DEFAULTBACKEND_IMAGE \
-            --set defaultBackend.image.tag=$DEFAULTBACKEND_TAG \
-            --set defaultBackend.image.digest=""
-        ```
+# Shut down the cluster and remove the AKS resource as well as the resource group and key vault.
+./manage-azure-deployment.sh wipe-all
 
-    4. Configure a domain name (FQDN)
-        ```bash
-        # Get the public IP of the NGINX ingress controller
-        PUBLIC_IP=$(kubectl --namespace default get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller)
+# Run post-deployment configurations. Must be run after running `manage-multijuicer.sh up` to configure the DNS record and more.
+./manage-azure-deployment.sh config
 
-        # Define a hostname
-        DNS_NAME="bvt-juice"
+# Retrieve the password for the admin-user in the MultiJuicer instance
+./manage-azure-deployment.sh password
+```
 
-        # Get the resource ID of the Public IP resource
-        PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$PUBLIC_IP')].[id]" --output tsv)
+#### Full example with deployment on Azure
+You may use the domain name provided by Azure DNS to reach your host. If you wish to do so, make sure to set `JUICE_FQDN` to `<AZURE_DNS_NAME>.<AZURE_LOCATION>.cloudapp.azure.com` (e.g. `juice1337.norwayeast.cloudapp.azure.com`) **prior** to running the scripts.
+```bash
+# Firstly, create a new Kubernetes cluster in Azure Kubernetes Service
+./manage-azure-deployment.sh new
 
-        # Add the hostname <DNS_NAME> to the Public IP resource
-        az network public-ip update --ids $PUBLIC_IP_ID --dns-name $DNS_NAME
-        ```
+# Next, we will deploy the services in the Kubernetes cluster
+./manage-multijuicer.sh up
 
-    5. Set up cert-manager
-        ```bash
-        # Add a label to the default namespace, to disable resource validation
-        kubectl label namespace default cert-manager.io/disable-validation=true
+# Finally, run the post-deployment configuration to finalize the deployment
+./manage-azure-deployment.sh config
 
-        # Add the helm repository for Jetstack
-        helm repo add jetstack https://charts.jetstack.io
+# Once the event is done, you may remove the cluster and all services by running
+./manage-multijuicer.sh down
+./manage-azure-deployment.sh wipe
+```
 
-        # Update the local helm chart repository cache
-        helm repo update
+### Creating a Service Principal in Azure
+*Creation of a Service Principal (App Registration) in Azure Active Directory (AAD) is done using the script [`service-principal.sh`](./service-principal.sh).*
 
-        # Use helm to deploy the cert-manager service
-        helm install cert-manager jetstack/cert-manager \
-            --namespace default \
-            --version $CERT_MANAGER_TAG \
-            --set installCRDs=true \
-            --set nodeSelector."kubernetes\.io/os"=linux \
-            --set image.repository=$ACR_URL/$CERT_MANAGER_IMAGE_CONTROLLER \
-            --set image.tag=$CERT_MANAGER_TAG \
-            --set webhook.image.repository=$ACR_URL/$CERT_MANAGER_IMAGE_WEBHOOK \
-            --set webhook.image.tag=$CERT_MANAGER_TAG \
-            --set cainjector.image.repository=$ACR_URL/$CERT_MANAGER_IMAGE_CAINJECTOR \
-            --set cainjector.image.tag=$CERT_MANAGER_TAG
-        ```
+#### Prerequisites
 
-    6. Create a cluster issuer
-        ```bash
-        kubectl apply -f cluster-issuer.yaml
-        ```
+##### Packages & Services
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/)
 
-    7. Create an ingress route
-        ```bash
-        kubectl apply -f ingress.yaml --namespace default
-        ```
+##### Authenticate against Azure
+```bash
+# Log in to Azure CLI with your account
+# A new tab will open in your browser, asking you to authenticate
+az login
 
-4. All done! To get the domain name of your instance, execute the following:
-    ```bash
-    az network public-ip show --ids $PUBLIC_IP_ID --query "[dnsSettings.fqdn]" --output tsv
-    ```
+# Set the subscription in which you wish to deploy the services
+az account set -s <subscription_id | subscription_name>
+```
+
+##### Environment variables
+Modify the environment variables in the file you copied in [Environment variables](#environment-variables). Required variables are marked as `(required)`:
+- `AZURE_SUBSCRIPTION_ID`: The subscription ID of your Azure subscription.
+- `AZURE_RESOURCE_GROUP`: Name of the resource group to use.
+- `AZURE_SERVICE_PRINCIPAL_NAME`: Name of the service principal.
+- `AZURE_AD_APP_ADMIN_GROUP`: Name of the Azure AD group allowed to administrate the Service Principal.
+
+Optionally specify the Github repository in which the code exists, to allow the Service Principal access to the repository:
+- `GIT_REPO`: E.g. `bouvet/nord-juice-shop`
+
+> :warning: Make sure that the resource group `AZURE_RESOURCE_GROUP` exists prior to running.
+
+> :exclamation: Make sure to *source* the environment variable file you just created before proceeding!
+
+```bash
+./service-principal.sh
+Usage: ./service-principal.sh COMMAND
+
+    Commands:
+        new     Create a new service principal
+        wipe    Delete the service principal
+
+```
+
+## Acknowledgements
+This project provides scripts for automating as much as possible in terms of deploying the [`MultiJuicer`](https://github.com/juice-shop/multi-juicer/) and [`CTFd`](https://ctfd.io/) services in a Kubernetes cluster.
+
+Please see the respective websites for more information:
+- CTFd:
+    - https://ctfd.io/
+    - https://github.com/CTFd/CTFd
+- OWASP JuiceShop:
+    - https://owasp.org/www-project-juice-shop/
+    - https://github.com/juice-shop/juice-shop
+- MultiJuicer:
+    - https://github.com/juice-shop/multi-juicer
