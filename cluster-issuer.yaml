@@ -5,7 +5,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: noreply-cert@bouvet.no
+    email: $TLS_CERT_EMAIL
     privateKeySecretRef:
       name: letsencrypt
     solvers:

@@ -228,7 +228,7 @@ function destroy_cert_manager() {
 function apply_cluster_issuer() {
     info "Configuring cluster-issuer"
     # Create a cluster issuer
-    kubectl apply -f cluster-issuer.yaml
+    < cluster-issuer.yaml envsubst | kubectl apply --namespace default -f -
 }
 
 function apply_ingress() {
