@@ -25,7 +25,7 @@ METRICS_USER="${METRICS_USER:-prometheus-scraper}"
 # Grace period before an instance of JuiceShop is considered 'inactive' (and thus is deleted)
 GRACE_PERIOD="${GRACE_PERIOD:-1d}"
 ## Toggles
-# Whether to configure the monitoring solution. Defaults to true
+# Whether to configure the monitoring solution. Defaults to false
 MANAGE_MONITORING=${MANAGE_MONITORING:-0}
 # Whether to configure the CTFd deployment. Defaults to true
 MANAGE_CTFD=${MANAGE_CTFD:-1}
