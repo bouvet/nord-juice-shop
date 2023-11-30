@@ -7,13 +7,13 @@ SCRIPT_NAME=$(basename "$0")
 ### Required variables ###
 # Name of the resource group to use. Will be created if 'MANAGE_RG=1'
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:?Missing required environment variable.}"
-# DNS name of the NGINX controller, used as <AZURE_DNS_NAME>.<LOCATION>.cloudapp.azure.com
+# DNS name of the NGINX controller, used as <AZURE_DNS_NAME>.<AZURE_LOCATION>.cloudapp.azure.com
 AZURE_DNS_NAME="${AZURE_DNS_NAME:?Missing required environment variable.}"
 
 ### Default variables ###
 ## Azure / Cluster
 # Region in which to deploy the services
-LOCATION="${LOCATION:-norwayeast}"
+AZURE_LOCATION="${AZURE_LOCATION:-norwayeast}"
 # Name to use for the cluster
 CLUSTER_NAME="${CLUSTER_NAME:-juicy-k8s}"
 # Number of nodes for the cluster
@@ -92,9 +92,9 @@ function __check_resource_group() {
 }
 
 function create_resource_group() {
-    info "Creating Resource Group '$AZURE_RESOURCE_GROUP' in '$LOCATION'"
+    info "Creating Resource Group '$AZURE_RESOURCE_GROUP' in '$AZURE_LOCATION'"
     # Create a new resource group
-    az group create --location "$LOCATION" --name "$AZURE_RESOURCE_GROUP"
+    az group create --location "$AZURE_LOCATION" --name "$AZURE_RESOURCE_GROUP"
 }
 
 function destroy_resource_group() {
@@ -163,7 +163,7 @@ function destroy_dns_record() {
 
 function create_keyvault() {
     info "Creating the Azure Key Vault '$KEY_VAULT_NAME'"
-    az keyvault create --location "$LOCATION" --name "$KEY_VAULT_NAME" --resource-group "$AZURE_RESOURCE_GROUP"
+    az keyvault create --location "$AZURE_LOCATION" --name "$KEY_VAULT_NAME" --resource-group "$AZURE_RESOURCE_GROUP"
     if [ -n "$AZURE_SERVICE_PRINCIPAL_NAME" ]; then
         # Grant access to the KeyVault to the Service Principal, if defined
         az keyvault set-policy --name "$KEY_VAULT_NAME" --spn "$AZURE_SERVICE_PRINCIPAL_NAME" --secret-permissions set get list
