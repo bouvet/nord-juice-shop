@@ -71,3 +71,9 @@ juiceShop:
       showFlagsInNotifications: true
   # -- Specify a custom NODE_ENV for JuiceShop. If value is changed to something other than 'multi-juicer' it's not possible to set a custom config via `juiceShop.config`.
   nodeEnv: "multi-juicer"
+
+# Deletes unused JuiceShop instances after a configurable period of inactivity
+juiceShopCleanup:
+  enabled: true
+  # -- Specifies when Juice Shop instances will be deleted when unused for that period.
+  gracePeriod: 1d

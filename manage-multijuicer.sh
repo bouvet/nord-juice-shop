@@ -22,6 +22,8 @@ BALANCER_REPLICAS="${BALANCER_REPLICAS:-3}"
 MAX_INSTANCES="${MAX_INSTANCES:-5}"
 # Username for the metrics user
 METRICS_USER="${METRICS_USER:-prometheus-scraper}"
+# Grace period before an instance of JuiceShop is considered 'inactive' (and thus is deleted)
+GRACE_PERIOD="${GRACE_PERIOD:-1d}"
 ## Toggles
 # Whether to configure the monitoring solution. Defaults to true
 MANAGE_MONITORING=${MANAGE_MONITORING:-0}
@@ -151,7 +153,8 @@ function deploy_multi_juicer() {
         --set balancer.metrics.dashboards.enabled="$__MONITORING_ENABLED" \
         --set balancer.metrics.serviceMonitor.enabled="$__MONITORING_ENABLED" \
         --set balancer.metrics.basicAuth.username="$METRICS_USER" \
-        --set balancer.metrics.basicAuth.password="$METRICS_PASS"
+        --set balancer.metrics.basicAuth.password="$METRICS_PASS" \
+        --set juiceShopCleanup.gracePeriod="$GRACE_PERIOD"
 }
 
 function destroy_multi_juicer() {
