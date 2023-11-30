@@ -28,6 +28,18 @@ MANAGE_CLUSTER=${MANAGE_CLUSTER:-0}
 # Whether to create/delete the key vault. Defaults to false
 MANAGE_KEYVAULT=${MANAGE_KEYVAULT:-0}
 
+__REQUIRED_BINARIES=(
+    "az"
+    "kubectl"
+)
+# Check that all required binaries are present
+for __REQ_PKG in "${__REQUIRED_BINARIES[@]}"; do
+    if ! which "$__REQ_PKG" &> /dev/null ; then
+        echo "ERROR: Missing required package '$__REQ_PKG'"
+        exit 1
+    fi
+done
+
 function usage() {
     echo -e "Usage: ./$SCRIPT_NAME COMMAND
 
