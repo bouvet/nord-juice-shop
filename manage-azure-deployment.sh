@@ -5,9 +5,9 @@ set -euo pipefail
 SCRIPT_NAME=$(basename "$0")
 
 ### Required variables ###
-# Name of the resource group to use/create.
+# Name of the resource group to use. Will be created if 'MANAGE_RG=1'
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:?Missing required environment variable.}"
-# Hostname, used as <AZURE_DNS_NAME>.<LOCATION>.cloudapp.azure.com
+# DNS name of the NGINX controller, used as <AZURE_DNS_NAME>.<LOCATION>.cloudapp.azure.com
 AZURE_DNS_NAME="${AZURE_DNS_NAME:?Missing required environment variable.}"
 
 ### Default variables ###
@@ -47,7 +47,8 @@ function usage() {
         new\tDeploy a brand new cluster
         down\tScale down the cluster to save resources (keeps the AKS resource itself intact)
         up\tSpin the cluster back up, scaling up the resources
-        wipe\tWipe it, deleting all services including the cluster and key vault
+        wipe\tRemoves the cluster
+        wipe-all\tRemoves the cluster, resource group, and key vault.
         config\tRun post-deployment configurations, including creating the DNS record in Azure
         password\tRetrieve the admin password for the multi-juicer instance
     "
