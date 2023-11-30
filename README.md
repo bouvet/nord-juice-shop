@@ -1,5 +1,11 @@
 # Nord Juice Shop
 
+*Nord Juice Shop* is a collection of scripts that aims to facilitate automation of the deployment of MultiJuicer and CTFd, which may be used to host CTF events or internal training on real-world web application security issues using OWASP JuiceShop.
+
+The main script, [`manage-multijuicer.sh`](./manage-multijuicer.sh), is a wrapper around MultiJuicer and CTFd (see [Acknowledgements](#acknowledgements)), and as such must be deployed on a Kubernetes cluster. The repository also contains a script for creating a new Kubernetes cluster in Azure Kubernetes Service (AKS) (see [Creating a Kubernetes cluster in Azure](#creating-a-kubernetes-cluster-in-azure)). For a full example of going from zero to deployment, see [Full example with deployment on Azure](#full-example-with-deployment-on-azure).
+
+We have been using this solution in our internal workshops and events, with the aim of providing IT personnel with hands-on practical experience on web application security, in a *safe* environment.
+
 ## Prerequisites
 
 ### Packages & Services
