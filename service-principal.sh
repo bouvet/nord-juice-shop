@@ -5,12 +5,14 @@ set -euo pipefail
 SCRIPT_NAME=$(basename "$0")
 
 ### Required variables ###
-# The subscription ID (required)
+# The subscription ID
 AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:?Missing required environment variable.}"
-# Name of the resource group (required)
+# Name of the resource group
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:?Missing required environment variable.}"
-# Name of the service principal (required)
+# Name of the service principal
 AZURE_SERVICE_PRINCIPAL_NAME="${AZURE_SERVICE_PRINCIPAL_NAME:?Missing required environment variable.}"
+# Name of the Azure AD group allowed to administrate the App Registration (Service Principal)
+AZURE_AD_APP_ADMIN_GROUP="${AZURE_AD_APP_ADMIN_GROUP:?Missing required environment variable.}"
 
 ### Default variables ###
 # The Github repository in which the code is stored. Used to create a federated credential for the service principal. In the format <USER|ORGANIZATION>/<REPOSITORY_NAME>.
@@ -99,11 +101,11 @@ function set_owners() {
     APP_ID=$(az ad app list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].appId" -o tsv)
     OBJECT_ID=$(az ad sp list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
 
-    info "Getting members from AAD group '$AZURE_ADMIN_AAD_GROUP'"
+    info "Getting members from AAD group '$AZURE_AD_APP_ADMIN_GROUP'"
     # Gets the owners and converts the multiline output to an array
     SAVEIFS="$IFS"
     IFS=$'\n'
-    OWNERS=($(az ad group member list -g "$AZURE_ADMIN_AAD_GROUP" --query "[].id" -o tsv))
+    OWNERS=($(az ad group member list -g "$AZURE_AD_APP_ADMIN_GROUP" --query "[].id" -o tsv))
     IFS="$SAVEIFS"
 
     info "Setting owners for service principal '$AZURE_SERVICE_PRINCIPAL_NAME' - will give Bad Request error if owner is already present"
