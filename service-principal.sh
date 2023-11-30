@@ -10,8 +10,10 @@ AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID:?Missing required environment var
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:?Missing required environment variable.}"
 # Name of the service principal (required)
 AZURE_SERVICE_PRINCIPAL_NAME="${AZURE_SERVICE_PRINCIPAL_NAME:?Missing required environment variable.}"
-# Name of the admin Azure AD group
-AZURE_ADMIN_AAD_GROUP="${AZURE_ADMIN_AAD_GROUP:?Missing required environment variable.}"
+
+### Default variables ###
+# The Github repository in which the code is stored. Used to create a federated credential for the service principal. In the format <USER|ORGANIZATION>/<REPOSITORY_NAME>.
+GIT_REPO=""
 
 function usage() {
     echo -e "Usage: ./$SCRIPT_NAME COMMAND
@@ -39,6 +41,10 @@ info() {
 
 success() {
   echo >&2 -e "${GREEN}    SUCCESS${NOFORMAT}"
+}
+
+warn() {
+    echo >&2 -e "${ORANGE}  ${1:-}${NOFORMAT}"
 }
 
 failure() {
@@ -129,17 +135,22 @@ function destroy_role_assignment() {
 
 function create_federated_credential() {
     info "Creating federated credential for '$AZURE_SERVICE_PRINCIPAL_NAME'"
-    # Get the app registration object ID
-    APP_OBJECT_ID=$(az ad app list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
 
-    # Create the federated credential
-    az rest --method POST \
-        --uri "https://graph.microsoft.com/beta/applications/$APP_OBJECT_ID/federatedIdentityCredentials" \
-        --body '{"name": "nord-juice-shop-main",'\
-'"issuer": "https://token.actions.githubusercontent.com",'\
-'"subject": "repo:bouvet/nord-juice-shop:ref:refs/heads/main",'\
-'"description": "main",'\
-'"audiences": ["api://AzureADTokenExchange"]}'
+    if [ -z "$GIT_REPO" ]; then
+        warn "WARNING: Unable to create federated credential due to missing variable 'GIT_REPO'."
+    else
+        # Get the app registration object ID
+        APP_OBJECT_ID=$(az ad app list --filter "displayname eq '$AZURE_SERVICE_PRINCIPAL_NAME'" --query "[].id" -o tsv)
+
+        # Create the federated credential
+        az rest --method POST \
+            --uri "https://graph.microsoft.com/beta/applications/$APP_OBJECT_ID/federatedIdentityCredentials" \
+            --body '{"name": "nord-juice-shop-main",'\
+    '"issuer": "https://token.actions.githubusercontent.com",'\
+    '"subject": "repo:'"$GIT_REPO"':ref:refs/heads/main",'\
+    '"description": "main",'\
+    '"audiences": ["api://AzureADTokenExchange"]}'
+    fi
 }
 
 function print_app_registration_id() {

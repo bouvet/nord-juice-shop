@@ -49,11 +49,11 @@ juiceShop:
       showVersionNumber: false
       showGitHubLinks: false
       altcoinName: Juicycoin
-      privacyContactEmail: nord-juice-shop@bouvet.no
+      privacyContactEmail: not-a-real-address@juice-sh.op
       welcomeBanner:
         title: 'Welcome to OWASP Juice Shop!'
       securityTxt:
-        contact: mailto:nord-juice-shop@bouvet.no
+        contact: mailto:not-a-real-address@juice-sh.op
         encryption: ''
         acknowledgements: ''
     challenges:
