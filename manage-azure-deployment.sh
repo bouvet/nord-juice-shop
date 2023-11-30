@@ -236,7 +236,7 @@ function up() {
 }
 
 function down() {
-    info "Shutting down the Kubernetes cluster"
+    info "Shutting down the services"
     # Manage the resource group
     if [ "$MANAGE_RG" -eq 1 ]; then
         destroy_resource_group && success || failure
@@ -292,6 +292,11 @@ case "$COMMAND" in
         down
         ;;
     "wipe")
+        MANAGE_CLUSTER=1
+        down
+        ;;
+    "wipe-all")
+        MANAGE_RG=1
         MANAGE_CLUSTER=1
         MANAGE_KEYVAULT=1
         down
