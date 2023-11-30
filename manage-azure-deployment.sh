@@ -86,6 +86,11 @@ ARGS=("$@")
 # Command to execute
 COMMAND="${ARGS[0]}"
 
+function __check_resource_group() {
+    # Returns non-zero status if the group does not exist
+    az group show --name "$AZURE_RESOURCE_GROUP" &> /dev/null
+}
+
 function create_resource_group() {
     info "Creating Resource Group '$AZURE_RESOURCE_GROUP' in '$LOCATION'"
     # Create a new resource group
@@ -206,6 +211,11 @@ function up() {
     # Manage the resource group
     if [ "$MANAGE_RG" -eq 1 ]; then
         create_resource_group && success
+    else
+        if ! __check_resource_group; then
+            failure "The resource group '$AZURE_RESOURCE_GROUP' does not exist. Please create it manually, or re-run the script with 'MANAGE_RG=1'."
+            exit 1
+        fi
     fi
     # Manage the cluster itself
     if [ "$MANAGE_CLUSTER" -eq 1 ]; then
