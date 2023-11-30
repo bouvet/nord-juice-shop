@@ -27,6 +27,8 @@ MANAGE_RG=${MANAGE_RG:-0}
 MANAGE_CLUSTER=${MANAGE_CLUSTER:-0}
 # Whether to create/delete the key vault. Defaults to false
 MANAGE_KEYVAULT=${MANAGE_KEYVAULT:-0}
+# Whether to purge the key vault. Requires MANAGE_KEYVAULT=1. Defaults to false
+PURGE_KEYVAULT=${PURGE_KEYVAULT:-0}
 
 __REQUIRED_BINARIES=(
     "az"
@@ -236,6 +238,9 @@ function down() {
     fi
     if [ "$MANAGE_KEYVAULT" -eq 1 ]; then
         delete_keyvault && success
+        if [ "$PURGE_KEYVAULT" -eq 1 ]; then
+            az keyvault purge --name "$KEY_VAULT_NAME" || true
+        fi
     fi
     info "DONE"
 }
