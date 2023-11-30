@@ -47,8 +47,8 @@ function usage() {
 
     Commands:
         new\tDeploy a brand new cluster
-        down\tScale down the cluster to save resources (keeps the AKS resource itself intact)
         up\tSpin the cluster back up, scaling up the resources
+        down\tScale down the cluster to save resources (keeps the AKS resource itself intact)
         wipe\tRemoves the cluster
         wipe-all\tRemoves the cluster, resource group, and key vault.
         config\tRun post-deployment configurations, including creating the DNS record in Azure
