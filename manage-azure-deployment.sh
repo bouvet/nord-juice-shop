@@ -164,6 +164,10 @@ function destroy_dns_record() {
 function create_keyvault() {
     info "Creating the Azure Key Vault '$KEY_VAULT_NAME'"
     az keyvault create --location "$LOCATION" --name "$KEY_VAULT_NAME" --resource-group "$AZURE_RESOURCE_GROUP"
+    if [ -n "$AZURE_SERVICE_PRINCIPAL_NAME" ]; then
+        # Grant access to the KeyVault to the Service Principal, if defined
+        az keyvault set-policy --name "$KEY_VAULT_NAME" --spn "$AZURE_SERVICE_PRINCIPAL_NAME" --secret-permissions set get list
+    fi
 }
 
 function delete_keyvault() {
@@ -225,7 +229,7 @@ function up() {
         start_vm_scale_set && success
     fi
     if [ "$MANAGE_KEYVAULT" -eq 1 ]; then
-        create_keyvault && success
+        create_keyvault && success || failure "Unable to create Key Vault from this device"
     fi
     get_cluster_credentials
     info "DONE"
