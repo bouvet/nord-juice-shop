@@ -203,6 +203,9 @@ Usage: ./service-principal.sh COMMAND
 
 ```
 
+## Contributing
+Thanks for your interest in contributing! Please see the [Contribution guide](./CONTRIBUTING.md) for details
+
 ## Acknowledgements
 This project provides scripts for automating as much as possible in terms of deploying the [`MultiJuicer`](https://github.com/juice-shop/multi-juicer/) and [`CTFd`](https://ctfd.io/) services in a Kubernetes cluster.
 
