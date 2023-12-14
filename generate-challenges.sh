@@ -95,7 +95,7 @@ EOF
 function run_cli() {
     info "Importing challenges from JuiceShop"
     _CTF_CHALLENGES_OUT_PATH="ctfd-challenges-$(date +%FT%H%M%S).csv"
-    juice-shop-ctf --config "$_CTF_CFG_PATH" --output "$_CTF_CHALLENGES_OUT_PATH" && info "Wrote CTFd challenges to '$_CTF_CHALLENGES_OUT_PATH'. Upload this file to CTFd at $JUICE_FQDN/ctfd/admin/import"
+    juice-shop-ctf --config "$_CTF_CFG_PATH" --output "$_CTF_CHALLENGES_OUT_PATH" && info "Wrote CTFd challenges to '$_CTF_CHALLENGES_OUT_PATH'. Upload this file to CTFd at https://$JUICE_FQDN/ctfd/admin/import"
 }
 
 function cleanup() {
