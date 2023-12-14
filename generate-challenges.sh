@@ -30,19 +30,47 @@ _PIDFILE_PATH="/tmp/.juice-shop-portforward.pid"
 CTF_URL="http://localhost:$_PORT_LOCAL"
 
 function usage() {
-    echo -e "Usage: ./$SCRIPT_NAME [JUICE-SHOP URL]
+    echo -e "Usage: ./$SCRIPT_NAME
     "
     exit 0
 }
 
+function setup_colors() {
+  if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+    NOFORMAT='\033[0m' RED='\033[0;31m' GREEN='\033[0;32m' ORANGE='\033[0;33m' BLUE='\033[0;34m' PURPLE='\033[0;35m' CYAN='\033[0;36m' YELLOW='\033[1;33m'
+  else
+    # shellcheck disable=SC2034
+    NOFORMAT='' RED='' GREEN='' ORANGE='' BLUE='' PURPLE='' CYAN='' YELLOW=''
+  fi
+}
+
+setup_colors
+
+info() {
+  echo >&2 -e "${CYAN}$1${NOFORMAT}"
+}
+
+success() {
+  echo >&2 -e "${GREEN}    SUCCESS${NOFORMAT}"
+}
+
+failure() {
+  echo >&2 -e "${RED}${1:-\tERROR}${NOFORMAT}"
+}
+
+ARGS=("$@")
+
+# Command to execute
+COMMAND="${ARGS[0]:-gen}"
+
 function create_tunnel_to_pod() {
     # Forward traffic from this device to the juice-shop pod
-    echo "Opening temporary tunnel to a juice-shop pod"
+    info "Opening temporary tunnel to a juice-shop pod"
     # Get the name of a pod running an instance of juice-shop
     POD_NAME=$(kubectl get pods -l "app.kubernetes.io/name=juice-shop" -o name | head -1)
     if [ -z "$POD_NAME" ]; then
-        echo "ERROR: In order to import the challenges from juice-shop, an instance of juice-shop must be running."
-        echo "Please navigate to the multi-juicer instance and create a new team to deploy a new instance, then re-run this script once the instance is ready."
+        failure "ERROR: In order to import the challenges from juice-shop, an instance of juice-shop must be running."
+        failure "Please navigate to the multi-juicer instance and create a new team to deploy a new instance, then re-run this script once the instance is ready."
         exit 1
     fi
     (kubectl port-forward "$POD_NAME" "$_PORT_LOCAL:3000" &> /dev/null)&
@@ -51,7 +79,7 @@ function create_tunnel_to_pod() {
 
 function write_config_to_file() {
     # Write temp. config to file, used by the juice-shop-ctf-cli
-    echo "Writing juice-shop-ctf config to file"
+    info "Writing juice-shop-ctf config to file"
     # Ref. https://github.com/juice-shop/juice-shop-ctf#configuration-file
     cat <<EOF > $_CTF_CFG_PATH
 ctfFramework: CTFd
@@ -65,13 +93,13 @@ EOF
 }
 
 function run_cli() {
-    echo "Importing challenges from JuiceShop"
+    info "Importing challenges from JuiceShop"
     _CTF_CHALLENGES_OUT_PATH="ctfd-challenges-$(date +%FT%H%M%S).csv"
-    juice-shop-ctf --config "$_CTF_CFG_PATH" --output "$_CTF_CHALLENGES_OUT_PATH" && echo "Wrote CTFd challenges to '$_CTF_CHALLENGES_OUT_PATH'"
+    juice-shop-ctf --config "$_CTF_CFG_PATH" --output "$_CTF_CHALLENGES_OUT_PATH" && info "Wrote CTFd challenges to '$_CTF_CHALLENGES_OUT_PATH'. Upload this file to CTFd at $JUICE_FQDN/ctfd/admin/import"
 }
 
 function cleanup() {
-    echo "Cleaning up"
+    info "Cleaning up"
     # Delete temp config file
     rm "$_CTF_CFG_PATH"
     # Stop port forwarding
@@ -80,12 +108,23 @@ function cleanup() {
     rm "$_PIDFILE_PATH"
 }
 
-function main() {
-    create_tunnel_to_pod
-    write_config_to_file
-    run_cli
-    cleanup
-    echo "DONE"
+function run() {
+    create_tunnel_to_pod && success
+    write_config_to_file && success
+    run_cli && success
+    cleanup && success
+    info "DONE"
 }
 
-main
+case "$COMMAND" in
+    "-h" | "--help")
+        usage
+        ;;
+    "gen" | "generate")
+        run
+        ;;
+    *)
+        failure "Invalid argument '$COMMAND'\n"
+        usage
+        ;;
+esac
