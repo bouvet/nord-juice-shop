@@ -13,17 +13,17 @@ redis:
   enabled: True
   auth:
     enabled: true
-    password: "TWYxhLYzsAASkX2Tm6fC7EO0"
+    password: null
 
 mariadb:
   # Enable mariadb server provided by helm:
   enabled: True
   # Login credentials:
   auth:
-    rootPassword: "Nscek3Oh6tarZqK5XlkPSazK"
-    password: "EwENhUIMdbvsv29StDrGRqSb"
+    rootPassword: null
+    password: null
 
-    replicationPassword: "AKsu1TD1nr5cV3Q51Rk6BlYx"
+    replicationPassword: null
 
   persistence:
     enabled: true
@@ -33,7 +33,7 @@ mariadb:
 env:
   open:
     # Required if more than 1 worker (randomly generate)
-    SECRET_KEY: "vVvPUTQlORsy6QFjm547MQ53"
+    SECRET_KEY: null
     # Amount of CTFd workers
     WORKERS: 5
     # If behing ingress proxy or nginx:
