@@ -123,7 +123,11 @@ CTFD_MYSQL_ROOT_PASS="${CTFD_MYSQL_ROOT_PASS:-$(randstr)}"
 CTFD_MYSQL_PASS="${CTFD_MYSQL_PASS:-$(randstr)}"
 CTFD_MYSQL_REPL_PASS="${CTFD_MYSQL_REPL_PASS:-$(randstr)}"
 
+# Namespace for the MultiJuicer and CTFd components
+__CTF_NAMESPACE="juicer"
+# Namespace for the monitoring components
 __MONITORING_NAMESPACE="monitoring"
+# Whether monitoring is enabled, as 'true|false', for the YAML config.
 __MONITORING_ENABLED="true"
 if [ "$MANAGE_MONITORING" -eq 0 ]; then
     __MONITORING_ENABLED="false"
@@ -142,6 +146,10 @@ CERT_MANAGER_TAG="v1.5.4"
 CERT_MANAGER_IMAGE_CONTROLLER="jetstack/cert-manager-controller"
 CERT_MANAGER_IMAGE_WEBHOOK="jetstack/cert-manager-webhook"
 CERT_MANAGER_IMAGE_CAINJECTOR="jetstack/cert-manager-cainjector"
+
+function set_active_namespace() {
+    kubectl config set-context --current --namespace="${1:-$__CTF_NAMESPACE}"
+}
 
 function deploy_multi_juicer() {
     info "Deploying multi-juicer"
@@ -180,7 +188,6 @@ function deploy_ingress() {
     # Use helm to deploy the NGINX ingress controller
     helm install nginx-ingress ingress-nginx/ingress-nginx \
         --version "$INGRESS_VERSION" \
-        --namespace default --create-namespace \
         --set controller.replicaCount=2 \
         --set controller.nodeSelector."kubernetes\.io/os"=linux \
         --set controller.image.registry="$K8S_CONTAINER_REGISTRY" \
@@ -208,8 +215,8 @@ function destroy_ingress() {
 
 function deploy_cert_manager() {
     info "Deploying cert-manager"
-    # Add a label to the default namespace, to disable resource validation
-    kubectl label --overwrite namespace default cert-manager.io/disable-validation=true
+    # Add a label to the namespace, to disable resource validation
+    kubectl label --overwrite namespace "$__CTF_NAMESPACE" cert-manager.io/disable-validation=true
 
     # Add the helm repository for Jetstack
     helm repo add --force-update jetstack https://charts.jetstack.io
@@ -219,7 +226,6 @@ function deploy_cert_manager() {
 
     # Use helm to deploy the cert-manager service
     helm install cert-manager jetstack/cert-manager \
-        --namespace default \
         --version "$CERT_MANAGER_TAG" \
         --set installCRDs=true \
         --set nodeSelector."kubernetes\.io/os"=linux \
@@ -240,12 +246,12 @@ function destroy_cert_manager() {
 function apply_cluster_issuer() {
     info "Configuring cluster-issuer"
     # Create a cluster issuer
-    < cluster-issuer.yaml envsubst | kubectl apply --namespace default -f -
+    < cluster-issuer.yaml envsubst | kubectl apply -f -
 }
 
 function apply_ingress() {
     info "Configuring ingress"
-    < ingress.yaml envsubst | kubectl apply --namespace default -f -
+    < ingress.yaml envsubst | kubectl apply -f -
 }
 
 function deploy_monitoring() {
@@ -258,40 +264,46 @@ function deploy_monitoring() {
     # Update the local helm chart repository cache
     helm repo update
 
-    # Create a new namespace for the monitoring services
+    # Ensure that the namespace for the monitoring services exists
     kubectl get namespace "$__MONITORING_NAMESPACE" &> /dev/null && true || kubectl create namespace "$__MONITORING_NAMESPACE"
 
+    # Set the monitoring namespace as the current context
+    set_active_namespace "$__MONITORING_NAMESPACE"
+
     # Use helm to deploy the prometheus-stack chart, overriding the values (see monitoring.yaml)
-    helm --namespace "$__MONITORING_NAMESPACE" \
-        upgrade --install monitoring \
+    helm upgrade --install monitoring \
         prometheus-community/kube-prometheus-stack \
         --version"$PROMETHEUS_VERSION" \
         --values monitoring.yaml \
         --set grafana.adminPassword="$GRAFANA_PASS"
     
     # Use helm to deploy the loki chart
-    helm --namespace "$__MONITORING_NAMESPACE" \
-        upgrade --install loki \
+    helm upgrade --install loki \
         grafana/loki \
         --version "$LOKI_VERSION" \
         --set serviceMonitor.enabled="true"
 
     # Use helm to deploy the promtail chart
-    helm --namespace "$__MONITORING_NAMESPACE" \
-        upgrade --install promtail \
+    helm upgrade --install promtail \
         grafana/promtail \
         --version "$PROMTAIL_VERSION" \
         --set config.lokiAddress="http://loki:3100/loki/api/v1/push" \
         --set serviceMonitor.enabled="true"
+    
+    # Set the CTF namespace as the current context
+    set_active_namespace "$__CTF_NAMESPACE"
 }
 
 function destroy_monitoring() {
     info "Deleting monitoring services"
 
+    # Set the monitoring namespace as the current context
+    set_active_namespace "$__MONITORING_NAMESPACE"
+
     # Delete the monitoring deployment
-    helm --namespace "$__MONITORING_NAMESPACE" delete promtail
-    helm --namespace "$__MONITORING_NAMESPACE" delete loki
-    helm --namespace "$__MONITORING_NAMESPACE" delete monitoring
+    helm delete promtail
+    helm delete loki
+    helm delete monitoring
     # https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack#uninstall-helm-chart
     kubectl delete crd alertmanagerconfigs.monitoring.coreos.com
     kubectl delete crd alertmanagers.monitoring.coreos.com
@@ -304,6 +316,9 @@ function destroy_monitoring() {
     
     # Delete the namespace for the monitoring services
     kubectl delete namespace "$__MONITORING_NAMESPACE" --force
+
+    # Set the monitoring namespace as the current context
+    set_active_namespace "$__CTF_NAMESPACE"
 }
 
 function deploy_ctfd() {
@@ -340,6 +355,11 @@ function wait_for_propagation() {
 }
 
 function up() {
+    # Ensure that the namespace for the CTF services exists
+    kubectl get namespace "$__CTF_NAMESPACE" &> /dev/null && true || kubectl create namespace "$__CTF_NAMESPACE"
+    # Set the CTF namespace as the current context
+    set_active_namespace "$__CTF_NAMESPACE"
+
     # Manage the monitoring services (prometheus/grafana/loki)
     if [ "$MANAGE_MONITORING" -eq 1 ]; then
         deploy_monitoring && success
@@ -357,12 +377,16 @@ function up() {
 }
 
 function down() {
+    # Set the CTF namespace as the current context
+    set_active_namespace "$__CTF_NAMESPACE"
     destroy_cert_manager && success || failure
     destroy_ingress && success || failure
     if [ "$MANAGE_CTFD" -eq 1 ]; then
         destroy_ctfd && success || failure
     fi
     destroy_multi_juicer && success || failure
+    # Delete the namespace for the CTF services
+    kubectl delete namespace "$__CTF_NAMESPACE" --force
     # Manage the monitoring services (prometheus/grafana/loki)
     if [ "$MANAGE_MONITORING" -eq 1 ]; then
         destroy_monitoring && success || failure
