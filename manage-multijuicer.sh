@@ -32,10 +32,18 @@ MANAGE_CTFD=${MANAGE_CTFD:-1}
 ## Versions
 # MultiJuicer helm chart version, https://github.com/juice-shop/multi-juicer/releases
 MULTIJUICER_VERSION=${MULTIJUICER_VERSION:-7.0.1}
+# Ingress helm chart version
+INGRESS_VERSION=${INGRESS_VERSION:-4.0.13}
 # CTFd helm chart version, https://github.com/bman46/CTFd-Helm/releases
 CTFD_VERSION=${CTFD_VERSION:-v0.8.4}
 # JuiceShop version
 JUICESHOP_VERSION=${JUICESHOP_VERSION:-v15.3.0}
+# Prometheus version (monitoring)
+PROMETHEUS_VERSION=${PROMETHEUS_VERSION:-45.21.0}
+# Loki version (monitoring)
+LOKI_VERSION=${LOKI_VERSION:-5.2.0}
+# Promtail version (monitoring)
+PROMTAIL_VERSION=${PROMTAIL_VERSION:-6.11.0}
 
 # Change locale to make "</dev/urandom tr -dc" work on Mac
 OS=$(uname)
@@ -173,7 +181,7 @@ function deploy_ingress() {
 
     # Use helm to deploy the NGINX ingress controller
     helm install nginx-ingress ingress-nginx/ingress-nginx \
-        --version 4.0.13 \
+        --version "$INGRESS_VERSION" \
         --namespace default --create-namespace \
         --set controller.replicaCount=2 \
         --set controller.nodeSelector."kubernetes\.io/os"=linux \
@@ -259,7 +267,7 @@ function deploy_monitoring() {
     helm --namespace "$__MONITORING_NAMESPACE" \
         upgrade --install monitoring \
         prometheus-community/kube-prometheus-stack \
-        --version 45.21.0 \
+        --version"$PROMETHEUS_VERSION" \
         --values monitoring.yaml \
         --set grafana.adminPassword="$GRAFANA_PASS"
     
@@ -267,14 +275,14 @@ function deploy_monitoring() {
     helm --namespace "$__MONITORING_NAMESPACE" \
         upgrade --install loki \
         grafana/loki \
-        --version 5.2.0 \
+        --version "$LOKI_VERSION" \
         --set serviceMonitor.enabled="true"
 
     # Use helm to deploy the promtail chart
     helm --namespace "$__MONITORING_NAMESPACE" \
         upgrade --install promtail \
         grafana/promtail \
-        --version 6.11.0 \
+        --version "$PROMTAIL_VERSION" \
         --set config.lokiAddress="http://loki:3100/loki/api/v1/push" \
         --set serviceMonitor.enabled="true"
 }
