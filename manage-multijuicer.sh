@@ -145,8 +145,6 @@ CERT_MANAGER_IMAGE_CAINJECTOR="jetstack/cert-manager-cainjector"
 
 function deploy_multi_juicer() {
     info "Deploying multi-juicer"
-    # Add the helm repo for multi-juicer
-    
     # Enable OCI support
     export HELM_EXPERIMENTAL_OCI=1
 
