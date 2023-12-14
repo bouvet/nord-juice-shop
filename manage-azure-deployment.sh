@@ -138,7 +138,7 @@ function deallocate_vm_scale_set() {
 function configure_dns_record() {
     info "Configuring the DNS record"
     # Get the public IP of the NGINX ingress controller
-    PUBLIC_IP=$(kubectl --namespace default get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller)
+    PUBLIC_IP=$(kubectl get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller)
 
     # Get the resource ID of the Public IP resource
     PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$PUBLIC_IP')].[id]" --output tsv)
@@ -150,7 +150,7 @@ function configure_dns_record() {
 function destroy_dns_record() {
     info "Deleting the DNS record"
      # Get the public IP of the NGINX ingress controller
-    PUBLIC_IP=$(kubectl --namespace default get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller || true)
+    PUBLIC_IP=$(kubectl get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller || true)
 
     if [ -n "$PUBLIC_IP" ]; then
         # Get the resource ID of the Public IP resource
