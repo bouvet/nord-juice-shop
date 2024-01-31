@@ -1,0 +1,49 @@
+name: Deploy CTF services on Azure Kubernetes Service
+on:
+  workflow_dispatch:
+    inputs:
+      ENVIRONMENT:
+        default: ctf
+        description: The name of the GitHub environment to use (https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#about-environments)
+        type: environment
+      
+permissions:
+      id-token: write # Required for requesting the JWT
+      contents: read
+
+jobs:
+  deploy:
+    name: Deploy CTF services
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ENVIRONMENT }}
+    steps:
+      - name: Run az login
+        uses: ./.github/workflows/azure-login.yaml
+
+      - name: Create the Kubernetes cluster in AKS
+        run: |
+          ./manage-azure-deployment.sh new
+
+      - name: Deploy the CTF services
+        run: |
+          ./manage-multijuicer.sh up
+
+      - name: Run post-deployment configuration tasks
+        run: |
+          ./manage-azure-deployment.sh config 
+
+  import-challenges:
+    name: Import challenges to CTFd
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ENVIRONMENT }}
+    steps:
+      - name: Generate challenges
+        run: |
+          ./generate-challenges.sh
+
+      - name: Upload CTFd challenges file as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctfd-challenges.csv
+          path: ctfd-challenges-*.csv
+          retention-days: 7
