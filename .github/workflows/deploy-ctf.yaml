@@ -24,6 +24,25 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.29.1'
+
+      - name: Install helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.14.0'
+
+      - name: Install go
+        uses: actions/setup-go@v5
+      
+      - name: Install envsubst
+        run: |
+          go install github.com/a8m/envsubst/cmd/envsubst@v1.4.2
 
       - name: Create the Kubernetes cluster in AKS
         run: |
@@ -42,6 +61,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ENVIRONMENT }}
     steps:
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.29.1'
+
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install juice-shop-ctf-cli
+        run: npm install -g juice-shop-ctf-cli
+
       - name: Generate challenges
         run: |
           ./generate-challenges.sh
