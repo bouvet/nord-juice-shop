@@ -60,6 +60,7 @@ jobs:
     name: Import challenges to CTFd
     runs-on: ubuntu-latest
     environment: ${{ inputs.ENVIRONMENT }}
+    needs: [deploy]
     steps:
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
@@ -70,7 +71,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install juice-shop-ctf-cli
         run: npm install -g juice-shop-ctf-cli
