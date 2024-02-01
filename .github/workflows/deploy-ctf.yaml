@@ -6,7 +6,20 @@ on:
         default: ctf
         description: The name of the GitHub environment to use (https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#about-environments)
         type: environment
-      
+  workflow_call:
+    inputs:
+      ENVIRONMENT:
+        default: ctf
+        description: The name of the GitHub environment to use (https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#about-environments)
+        type: string
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+
 permissions:
       id-token: write # Required for requesting the JWT
       contents: read
