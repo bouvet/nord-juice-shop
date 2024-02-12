@@ -29,6 +29,18 @@ jobs:
     name: Deploy CTF services
     runs-on: ubuntu-latest
     environment: ${{ inputs.ENVIRONMENT }}
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_DNS_NAME: ${{ vars.AZURE_DNS_NAME }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      CLUSTER_NAME: ${{ vars.CLUSTER_NAME }}
+      NODE_COUNT: ${{ vars.NODE_COUNT }}
+      KEY_VAULT_NAME: ${{ vars.KEY_VAULT_NAME }}
+      MANAGE_RG: ${{ vars.MANAGE_RG }}
+      PURGE_RG: ${{ vars.PURGE_RG }}
+      MANAGE_CLUSTER: ${{ vars.MANAGE_CLUSTER }}
+      MANAGE_KEYVAULT: ${{ vars.MANAGE_KEYVAULT }}
+      PURGE_KEYVAULT: ${{ vars.PURGE_KEYVAULT }}
     steps:
       - name: Run az login
         uses: azure/login@v1
@@ -62,6 +74,22 @@ jobs:
           ./manage-azure-deployment.sh new
 
       - name: Deploy the CTF services
+        env:
+          CTF_KEY: ${{ secrets.CTF_KEY }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          CTFD_SECRET_KEY: ${{ secrets.CTFD_SECRET_KEY }}
+          JUICE_FQDN: ${{ vars.JUICE_FQDN }}
+          BALANCER_REPLICAS: ${{ vars.BALANCER_REPLICAS }}
+          MAX_INSTANCES: ${{ vars.MAX_INSTANCES }}
+          GRACE_PERIOD: ${{ vars.GRACE_PERIOD }}
+          MANAGE_MONITORING: ${{ vars.MANAGE_MONITORING }}
+          MANAGE_CTFD: ${{ vars.MANAGE_CTFD }}
+          METRICS_PASS: ${{ secrets.METRICS_PASS }}
+          GRAFANA_PASS: ${{ secrets.GRAFANA_PASS }}
+          CTFD_REDIS_PASS: ${{ secrets.CTFD_REDIS_PASS }}
+          CTFD_MYSQL_ROOT_PASS: ${{ secrets.CTFD_MYSQL_ROOT_PASS }}
+          CTFD_MYSQL_PASS: ${{ secrets.CTFD_MYSQL_PASS }}
+          CTFD_MYSQL_REPL_PASS: ${{ secrets.CTFD_MYSQL_REPL_PASS }}
         run: |
           ./manage-multijuicer.sh up
 
@@ -89,6 +117,8 @@ jobs:
         run: npm install -g juice-shop-ctf-cli
 
       - name: Generate challenges
+        env:
+          CTF_KEY: ${{ secrets.CTF_KEY }}
         run: |
           ./generate-challenges.sh
 
