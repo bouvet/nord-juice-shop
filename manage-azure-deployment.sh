@@ -21,8 +21,10 @@ NODE_COUNT="${NODE_COUNT:-2}"
 # Name of the key vault
 KEY_VAULT_NAME="${KEY_VAULT_NAME:-juice-shop-kv}"
 ## Toggles
-# Whether to create/delete the resource group. Defaults to false
+# Whether to create the resource group. Defaults to false
 MANAGE_RG=${MANAGE_RG:-0}
+# Whether to purge the resource group. Defaults to false.
+PURGE_RG=${PURGE_RG:-0}
 # Whether to create/delete the cluster itself. Defaults to false, unless COMMAND is 'new' or 'wipe'
 MANAGE_CLUSTER=${MANAGE_CLUSTER:-0}
 # Whether to create/delete the key vault. Defaults to false
@@ -131,7 +133,7 @@ function deallocate_vm_scale_set() {
     NODE_RESOURCE_GROUP=$(az aks list --query "[].nodeResourceGroup" --output tsv)
     # Get the name of the VM scale set
     SCALE_SET_NAME=$(az vmss list --resource-group "$NODE_RESOURCE_GROUP" --query "[].name" --output tsv)
-    # Start the VM scale set
+    # Stop the VM scale set
     az vmss deallocate --resource-group "$NODE_RESOURCE_GROUP" --name "$SCALE_SET_NAME"
 }
 
@@ -211,8 +213,8 @@ function up() {
 
 function down() {
     info "Shutting down the services"
-    # Manage the resource group
-    if [ "$MANAGE_RG" -eq 1 ]; then
+    # Remove the resource group
+    if [ "$PURGE_RG" -eq 1 ]; then
         destroy_resource_group && success || failure
     fi
     get_cluster_credentials 2> /dev/null || true
