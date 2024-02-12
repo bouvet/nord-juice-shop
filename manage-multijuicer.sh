@@ -316,7 +316,7 @@ function destroy_monitoring() {
     kubectl delete crd thanosrulers.monitoring.coreos.com
     
     # Delete the namespace for the monitoring services
-    kubectl delete namespace "$__MONITORING_NAMESPACE" --force
+    kubectl delete namespace "$__MONITORING_NAMESPACE"
 
     # Set the monitoring namespace as the current context
     set_active_namespace "$__CTF_NAMESPACE"
@@ -387,7 +387,7 @@ function down() {
     fi
     destroy_multi_juicer && success || failure
     # Delete the namespace for the CTF services
-    kubectl delete namespace "$__CTF_NAMESPACE" --force
+    kubectl delete namespace "$__CTF_NAMESPACE"
     # Manage the monitoring services (prometheus/grafana/loki)
     if [ "$MANAGE_MONITORING" -eq 1 ]; then
         destroy_monitoring && success || failure
