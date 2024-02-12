@@ -113,7 +113,7 @@ Usage: ./manage-azure-deployment.sh COMMAND
         down    Scale down the cluster to save resources (keeps the AKS resource itself intact)
         wipe    Removes the cluster
         wipe-all        Removes the cluster, resource group, and key vault.
-        config  Run post-deployment configurations, including creating the DNS record in Azure
+        write-secrets   Write the secrest to Azure Key Vault.
         password        Retrieve the admin password for the multi-juicer instance
 
 ```
@@ -134,8 +134,8 @@ Usage: ./manage-azure-deployment.sh COMMAND
 # Shut down the cluster and remove the AKS resource as well as the resource group and key vault.
 ./manage-azure-deployment.sh wipe-all
 
-# Run post-deployment configurations. Must be run after running `manage-multijuicer.sh up` to configure the DNS record and more.
-./manage-azure-deployment.sh config
+# Write the secrets to the Azure Keyvault
+./manage-azure-deployment.sh write-secrets
 
 # Retrieve the password for the admin-user in the MultiJuicer instance
 ./manage-azure-deployment.sh password
@@ -149,9 +149,6 @@ You may use the domain name provided by Azure DNS to reach your host. If you wis
 
 # Next, we will deploy the services in the Kubernetes cluster
 ./manage-multijuicer.sh up
-
-# Run the post-deployment configuration to finalize the deployment
-./manage-azure-deployment.sh config
 
 # Next, generate the challenge list for CTFd and upload the CSV file to CTFd
 ./generate-challenges.sh

@@ -93,10 +93,6 @@ jobs:
         run: |
           ./manage-multijuicer.sh up
 
-      - name: Run post-deployment configuration tasks
-        run: |
-          ./manage-azure-deployment.sh config 
-
   import-challenges:
     name: Import challenges to CTFd
     runs-on: ubuntu-latest
