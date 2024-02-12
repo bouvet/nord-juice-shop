@@ -53,7 +53,7 @@ function usage() {
         down\tScale down the cluster to save resources (keeps the AKS resource itself intact)
         wipe\tRemoves the cluster
         wipe-all\tRemoves the cluster, resource group, and key vault.
-        config\tRun post-deployment configurations, including creating the DNS record in Azure
+        write-secrets\tWrite the secrest to Azure Key Vault.
         password\tRetrieve the admin password for the multi-juicer instance
     "
     exit 0
@@ -234,13 +234,6 @@ function down() {
     info "DONE"
 }
 
-function post_configuration() {
-    info "Running post-deployment configuration tasks"
-    get_cluster_credentials
-    write_secrets_to_keyvault && success
-    info "DONE"
-}
-
 function get_admin_password() {
     info "Retrieving the admin password for the multi-juicer instance"
     get_cluster_credentials
@@ -275,8 +268,8 @@ case "$COMMAND" in
         MANAGE_KEYVAULT=1
         down
         ;;
-    "config" | "cfg")
-        post_configuration
+    "write-secrets")
+        write_secrets_to_keyvault && success
         ;;
     "password")
         get_admin_password
