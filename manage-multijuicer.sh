@@ -106,7 +106,7 @@ failure() {
 }
 
 function randstr() {
-    </dev/urandom tr -dc 'A-Za-z0-9' | head -c 24; echo
+    dd bs=512 if=/dev/urandom count=1 2>/dev/null | LC_ALL=C tr -dc "a-zA-Z0-9" | head -c 24; echo
 }
 
 ARGS=("$@")
