@@ -135,32 +135,6 @@ function deallocate_vm_scale_set() {
     az vmss deallocate --resource-group "$NODE_RESOURCE_GROUP" --name "$SCALE_SET_NAME"
 }
 
-function configure_dns_record() {
-    info "Configuring the DNS record"
-    # Get the public IP of the NGINX ingress controller
-    PUBLIC_IP=$(kubectl get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller)
-
-    # Get the resource ID of the Public IP resource
-    PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$PUBLIC_IP')].[id]" --output tsv)
-
-    # Add the hostname <AZURE_DNS_NAME> to the Public IP resource
-    az network public-ip update --ids "$PUBLIC_IP_ID" --dns-name "$AZURE_DNS_NAME" 2>/dev/null || true
-}
-
-function destroy_dns_record() {
-    info "Deleting the DNS record"
-     # Get the public IP of the NGINX ingress controller
-    PUBLIC_IP=$(kubectl get services -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' nginx-ingress-ingress-nginx-controller || true)
-
-    if [ -n "$PUBLIC_IP" ]; then
-        # Get the resource ID of the Public IP resource
-        PUBLIC_IP_ID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$PUBLIC_IP')].[id]" --output tsv)
-
-        # Delete the public IP record
-        az network public-ip delete --ids "$PUBLIC_IP_ID"
-    fi
-}
-
 function create_keyvault() {
     info "Creating the Azure Key Vault '$KEY_VAULT_NAME'"
     az keyvault create --location "$AZURE_LOCATION" --name "$KEY_VAULT_NAME" --resource-group "$AZURE_RESOURCE_GROUP"
@@ -242,7 +216,6 @@ function down() {
         destroy_resource_group && success || failure
     fi
     get_cluster_credentials 2> /dev/null || true
-    destroy_dns_record
     # Manage the cluster itself
     if [ "$MANAGE_CLUSTER" -eq 1 ]; then
         destroy_cluster && success || failure
@@ -262,7 +235,6 @@ function down() {
 function post_configuration() {
     info "Running post-deployment configuration tasks"
     get_cluster_credentials
-    configure_dns_record && success
     write_secrets_to_keyvault && success
     info "DONE"
 }

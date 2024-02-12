@@ -196,6 +196,7 @@ function deploy_ingress() {
         --set controller.image.digest="" \
         --set controller.admissionWebhooks.patch.nodeSelector."kubernetes\.io/os"=linux \
         --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz \
+        --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-dns-label-name"="${AZURE_DNS_NAME:-''}" \
         --set controller.admissionWebhooks.patch.image.registry="$K8S_CONTAINER_REGISTRY" \
         --set controller.admissionWebhooks.patch.image.image="$PATCH_IMAGE" \
         --set controller.admissionWebhooks.patch.image.tag="$PATCH_TAG" \
