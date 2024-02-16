@@ -405,6 +405,9 @@ case "$COMMAND" in
     "down")
         down
         ;;
+    "set-ns" | "set-namespace")
+        set_active_namespace
+        ;;
     *)
         failure "Invalid argument '$COMMAND'\n"
         usage

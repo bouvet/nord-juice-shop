@@ -162,6 +162,8 @@ function __kv_exists() {
 }
 
 function write_secrets_to_keyvault() {
+    # Activate the namespace in which multi-juicer resources are deployed
+    ./manage-multijuicer.sh set-namespace
     info "Writing secrets to the Azure Key Vault '$KEY_VAULT_NAME'"
     if __kv_exists; then
         # Push the CTFd DB password to the key vault
@@ -178,6 +180,8 @@ function write_secrets_to_keyvault() {
 }
 
 function get_multi_juicer_admin_password() {
+    # Activate the namespace in which multi-juicer resources are deployed
+    ./manage-multijuicer.sh set-namespace
     # Get the multi-juicer admin password
     MULTI_JUICER_PASS=$(kubectl get secrets juice-balancer-secret -o=jsonpath='{.data.adminPassword}' | base64 --decode)
     if [ -z "$MULTI_JUICER_PASS" ]; then
