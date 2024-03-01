@@ -105,6 +105,12 @@ failure() {
   echo >&2 -e "${RED}${1:-\tERROR}${NOFORMAT}"
 }
 
+fatal() {
+  failure "${1:-\tFATAL}"
+  cleanup
+  exit 1
+}
+
 ARGS=("$@")
 
 # Command to execute
@@ -145,8 +151,7 @@ function create_tunnel_to_pod() {
   POD_NAME=$(kubectl get pods -l "app.kubernetes.io/name=juice-shop" -o name | head -1)
   if [ -z "$POD_NAME" ]; then
     failure "ERROR: In order to import the challenges from juice-shop, an instance of juice-shop must be running."
-    failure "Please navigate to the multi-juicer instance and create a new team to deploy a new instance, then re-run this script once the instance is ready."
-    exit 1
+    fatal "Please navigate to the multi-juicer instance and create a new team to deploy a new instance, then re-run this script once the instance is ready."
   fi
   (kubectl port-forward "$POD_NAME" "$_PORT_LOCAL:3000" &> /dev/null)&
   echo $! > "$_PIDFILE_PATH"
