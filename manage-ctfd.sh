@@ -31,6 +31,7 @@ _CTFD_CONFIG_GEN_TEAM_NAME="ctfd-config-gen"
 _CTF_CFG_PATH="/tmp/juice-shop-cli-config.yaml"
 _PORT_LOCAL="8808"
 _PIDFILE_PATH="/tmp/.juice-shop-portforward.pid"
+_CTF_CHALLENGES_OUT_PATH="ctfd-challenges-$(date +%FT%H%M%S).csv"
 CTF_URL="http://localhost:$_PORT_LOCAL"
 
 function usage() {
@@ -126,18 +127,30 @@ EOF
 
 function run_cli() {
   info "Importing challenges from JuiceShop"
-  _CTF_CHALLENGES_OUT_PATH="ctfd-challenges-$(date +%FT%H%M%S).csv"
-  juice-shop-ctf --config "$_CTF_CFG_PATH" --output "$_CTF_CHALLENGES_OUT_PATH" && info "Wrote CTFd challenges to '$_CTF_CHALLENGES_OUT_PATH'. Upload this file to CTFd at https://$JUICE_FQDN/ctfd/admin/import"
+  juice-shop-ctf --config "$_CTF_CFG_PATH" --output "$_CTF_CHALLENGES_OUT_PATH"
+  if [[ -f "$_CTF_CHALLENGES_OUT_PATH" ]]; then
+    info "Wrote CTFd challenges to '$_CTF_CHALLENGES_OUT_PATH'."
+  else
+    failure "ERROR: $_JUICESHOP_CLI_PACKAGE failed to generate the CTFd config file"
+    return 1
+  fi
+}
 }
 
 function cleanup() {
   info "Cleaning up"
-  # Delete temp config file
-  rm "$_CTF_CFG_PATH"
-  # Stop port forwarding
-  kill -9 "$(cat $_PIDFILE_PATH)"
-  # Delete pidfile
-  rm "$_PIDFILE_PATH"
+  if [[ -f "$_CTF_CFG_PATH" ]]; then
+    # Delete temp config file
+    rm "$_CTF_CFG_PATH"
+  fi
+  if [[ -f "$_PIDFILE_PATH" ]]; then
+    if pgrep -F "$_PIDFILE_PATH" &> /dev/null; then
+      # Stop port forwarding
+      kill -9 "$(cat $_PIDFILE_PATH)"
+    fi
+    # Delete pidfile
+    rm "$_PIDFILE_PATH"
+  fi
 }
 
 function run() {
