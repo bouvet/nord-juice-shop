@@ -8,6 +8,46 @@ SCRIPT_NAME=$(basename "$0")
 CTF_KEY="${CTF_KEY:?Missing required environment variable.}"
 # FQDN (Fully Qualified Domain Name) at which the setup is accessible
 JUICE_FQDN="${JUICE_FQDN:?Missing required environment variable.}"
+# Password for the CTFd admin user (CTFD_ADMIN_USERNAME)
+CTFD_ADMIN_PASSWORD="${CTFD_ADMIN_PASSWORD:?Missing required environment variable}"
+
+### Optional variables ###
+# CTFd configuration - see https://docs.ctfd.io/docs/settings/overview/ for details.
+# Name of the CTF event. Displayed in the CTFd instance.
+CTF_NAME="${CTF_NAME:-nord-juice-shop}"
+# Description of the CTF event. Displayed in the CTFd instance.
+CTF_DESC="${CTF_DESC:-Nord JuiceShop CTF Event}"
+# User mode for the CTFd instance. Must be one of 'teams' or 'user'. See https://docs.ctfd.io/docs/settings/user-modes/
+CTF_USER_MODE="${CTF_USER_MODE:-teams}"
+# Visibility of challenges in the CTFd instance. Must be one of 'private' or 'public'. See https://docs.ctfd.io/docs/settings/visibility-settings#challenge-visibility
+CTF_CHALLENGE_VISIBILITY="${CTF_CHALLENGE_VISIBILITY:-private}"
+# Visibility of accounts in the CTFd instance. Must be one of 'private' or 'public'. See https://docs.ctfd.io/docs/settings/visibility-settings#account-visibility
+CTF_ACCOUNT_VISIBILITY="${CTF_ACCOUNT_VISIBILITY:-public}"
+# Visibility of scores in the CTFd instance. Must be one of 'private' or 'public'. See https://docs.ctfd.io/docs/settings/visibility-settings#score-visibility
+CTF_SCORE_VISIBILITY="${CTF_SCORE_VISIBILITY:-public}"
+# Visibility of account registration in the CTFd instance. Must be one of 'private' or 'public'. See https://docs.ctfd.io/docs/settings/visibility-settings#registration-visibility
+CTF_REGISTRATION_VISIBILITY="${CTF_REGISTRATION_VISIBILITY:-public}"
+# Setting a registration code will ask users on the registration page for the code that will enable them to register.
+CTFD_REGISTRATION_CODE="${CTFD_REGISTRATION_CODE:-}"
+# Whether to confirm emails of registered users. Must be one of 'true' or 'false'.
+CTF_VERIFY_EMAILS="${CTF_VERIFY_EMAILS:-false}"
+# Max. number of participants in a team. Only applicable if 'CTF_USER_MODE' is set to 'teams'.
+CTF_TEAM_SIZE="${CTF_TEAM_SIZE:-4}"
+# Username of the admin user for the CTFd instance.
+CTFD_ADMIN_USERNAME="${CTFD_ADMIN_USERNAME:-admin}"
+# Email address of the admin user for the CTFd instance.
+CTFD_ADMIN_EMAIL="${CTFD_ADMIN_EMAIL:-admin@juice-sh.op}"
+# Theme used in the CTFd instance. See https://docs.ctfd.io/docs/settings/themes
+CTFD_THEME="${CTFD_THEME:-core-beta}"
+# Theme color used in the CTFd instance.
+CTFD_THEME_COLOR="${CTFD_THEME_COLOR:-}"
+# Set the CTFd instance to "Paused" - will stop users from being able to submit answers. See https://docs.ctfd.io/docs/settings/competition-times/#pausing-a-ctf
+CTFD_PAUSED="${CTFD_PAUSED:-false}"
+# TODO: Remove to avoid handling conversion?
+# Start date of the CTF event, i.e. the date/time when competition content will be accessible. See https://docs.ctfd.io/docs/settings/competition-times
+CTF_START_DATETIME="${CTF_START_DATETIME:-}"
+# End date of the CTF event, i.e. the date/time when competition content will be inaccessible.
+CTF_END_DATETIME="${CTF_END_DATETIME:-}"
 
 # JuiceShop CLI command
 _JUICESHOP_CLI_BINARY="juice-shop-ctf"
@@ -33,6 +73,8 @@ _PORT_LOCAL="8808"
 _PIDFILE_PATH="/tmp/.juice-shop-portforward.pid"
 _CTF_CHALLENGES_OUT_PATH="ctfd-challenges-$(date +%FT%H%M%S).csv"
 CTF_URL="http://localhost:$_PORT_LOCAL"
+_CTFD_URL="https://$JUICE_FQDN/ctfd"
+_CURL_COOKIE_JAR="/tmp/.ctfd-cookies.out"
 
 function usage() {
   echo -e "Usage: ./$SCRIPT_NAME
@@ -135,6 +177,90 @@ function run_cli() {
     return 1
   fi
 }
+
+function _get_ctfd_nonce() {
+  # Allow optional sub-path specification
+  _PATH="${1:-}"
+  # Build the URL from which to retrieve the nonce.
+  _NONCE_URL="$_CTFD_URL$_PATH"
+  # Load the CTFd page
+  _ctfd_res=$(
+    curl -sSL "$_NONCE_URL" \
+      --cookie "$_CURL_COOKIE_JAR" \
+      --cookie-jar "$_CURL_COOKIE_JAR" \
+      --write-out "%{http_code}"
+  )
+  # Find the line matching 'csrfNonce'
+  _csrfNonce=$(echo "$_ctfd_res" | grep "csrfNonce")
+  # Split the line, extracting the value
+  _nonce=$(echo "$_csrfNonce" | awk -F"'csrfNonce':" '{ print $2 }')
+  # Strip out unwanted characters
+  _CTFD_NONCE=$(echo "$_nonce" | tr -d '," ')
+  # Fail if the length is not exactly 64 characters
+  if [ ! ${#_CTFD_NONCE} -eq 64 ]; then
+    return 1
+  fi
+  echo "$_CTFD_NONCE"
+}
+
+function _ctfd_is_configured() {
+  HEAD_RES_REDIR=$(
+    curl -so /dev/null "$_CTFD_URL/login" \
+      --head \
+      --write-out "%{redirect_url}"
+  )
+  # Check if /ctfd/setup is in the redirect url. If so, the instance is unconfigured
+  case "$HEAD_RES_REDIR" in
+    */ctfd/setup*)
+      return 1
+  esac
+}
+
+function setup_ctfd() {
+  info "Configuring the CTFd instance"
+
+  if _ctfd_is_configured; then
+    failure "The CTFd instance has already been configured. Skipping."
+    return 0
+  fi
+
+  # Retrieve the nonce (and session cookie)
+  _CTFD_NONCE=$(_get_ctfd_nonce)
+  # Send the request to configure the CTFd instance
+  SETUP_RES_STATUS_CODE=$(
+    curl -sLo /dev/null "$_CTFD_URL/setup" \
+      --cookie "$_CURL_COOKIE_JAR" \
+      --cookie-jar "$_CURL_COOKIE_JAR" \
+      --write-out "%{http_code}" \
+      -F "ctf_name=$CTF_NAME" \
+      -F "ctf_description=$CTF_DESC" \
+      -F "user_mode=$CTF_USER_MODE" \
+      -F "challenge_visibility=$CTF_CHALLENGE_VISIBILITY" \
+      -F "account_visibility=$CTF_ACCOUNT_VISIBILITY" \
+      -F "score_visibility=$CTF_SCORE_VISIBILITY" \
+      -F "registration_visibility=$CTF_REGISTRATION_VISIBILITY" \
+      -F "registration_code=$CTFD_REGISTRATION_CODE" \
+      -F "verify_emails=$CTF_VERIFY_EMAILS" \
+      -F "team_size=$CTF_TEAM_SIZE" \
+      -F "name=$CTFD_ADMIN_USERNAME" \
+      -F "email=$CTFD_ADMIN_EMAIL" \
+      -F "password=$CTFD_ADMIN_PASSWORD" \
+      -F "ctf_theme=$CTFD_THEME" \
+      -F "theme_color=$CTFD_THEME_COLOR" \
+      -F "paused=$CTFD_PAUSED" \
+      -F "start=$CTF_START_DATETIME" \
+      -F "end=$CTF_END_DATETIME" \
+      -F "_submit=Finish" \
+      -F "nonce=$_CTFD_NONCE"
+  )
+  
+  if [ ! "$SETUP_RES_STATUS_CODE" -eq 200 ]; then
+    failure "Failed to configure CTFd automatically. Please navigate to $_CTFD_URL to set up the instance manually."
+    return 1
+  fi
+  success
+}
+
 }
 
 function cleanup() {
@@ -150,6 +276,10 @@ function cleanup() {
     fi
     # Delete pidfile
     rm "$_PIDFILE_PATH"
+  fi
+  if [[ -f "$_CURL_COOKIE_JAR" ]]; then
+    # Delete the cookie jar
+    rm "$_CURL_COOKIE_JAR"
   fi
 }
 
