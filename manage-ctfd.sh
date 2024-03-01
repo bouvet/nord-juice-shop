@@ -10,11 +10,12 @@ CTF_KEY="${CTF_KEY:?Missing required environment variable.}"
 # JuiceShop CLI command
 _JUICESHOP_CLI_BINARY="juice-shop-ctf"
 _JUICESHOP_CLI_PACKAGE="$_JUICESHOP_CLI_BINARY-cli"
+_JUICESHOP_CLI_VERSION="10.0.1"
 
 # Check if juice-shop-ctf-cli is installed
 if ! command -v "$_JUICESHOP_CLI_BINARY" &> /dev/null; then
   echo "Missing required dependency '$_JUICESHOP_CLI_BINARY'. Install it by running:"
-  echo "npm install -g $_JUICESHOP_CLI_PACKAGE"
+  echo "npm install -g $_JUICESHOP_CLI_PACKAGE@$_JUICESHOP_CLI_VERSION"
   exit 1
 fi
 # Check if kubectl is installed
