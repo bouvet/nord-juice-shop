@@ -77,7 +77,13 @@ _CTFD_URL="https://$JUICE_FQDN/ctfd"
 _CURL_COOKIE_JAR="/tmp/.ctfd-cookies.out"
 
 function usage() {
-  echo -e "Usage: ./$SCRIPT_NAME
+  echo -e "Usage: ./$SCRIPT_NAME COMMAND
+
+  Commands:
+      cfg\tConfigures the CTFd instance
+      gen\tGenerates the CTFd challenges CSV
+      import\tImport a CTFd challenges CSV to the CTFd instance
+      run\tRuns all of the above, i.e. configures CTFd, and generates and imports the challenges
   "
   exit 0
 }
@@ -114,7 +120,7 @@ fatal() {
 ARGS=("$@")
 
 # Command to execute
-COMMAND="${ARGS[0]:-gen}"
+COMMAND="${ARGS[0]:-run}"
 
 function juice_shop_instance_exists() {
   _matches=$(kubectl get pod -l "app.kubernetes.io/name=juice-shop" -o name | wc -l)
@@ -336,7 +342,7 @@ function cleanup() {
   fi
 }
 
-function run() {
+function gen() {
   # Generate challenges CSV
   if ! juice_shop_instance_exists; then
     create_juice_shop_instance && success
@@ -345,16 +351,42 @@ function run() {
   create_tunnel_to_pod && success 
   write_config_to_file && success
   run_cli && success
-  cleanup && success
-  info "DONE"
+}
+
+function run() {
+  gen
+  if setup_ctfd; then
+    import_challenges && success
+  fi
 }
 
 case "$COMMAND" in
   "-h" | "--help")
     usage
     ;;
+  "cfg")
+    ./manage-multijuicer.sh set-namespace
+    setup_ctfd
+    ;;
   "gen" | "generate")
+    ./manage-multijuicer.sh set-namespace
+    gen
+    info "Upload this file to CTFd at https://$JUICE_FQDN/ctfd/admin/import"
+    cleanup
+    ;;
+  "import")
+    _CTF_CHALLENGES_OUT_PATH="${2:-}"
+    if [ -z "$_CTF_CHALLENGES_OUT_PATH" ]; then
+      fatal "Missing required argument to 'import': The filepath of the challenges CSV to import must be specified."
+    fi
+    ./manage-multijuicer.sh set-namespace
+    import_challenges && success
+    cleanup
+    ;;
+  "run")
+    ./manage-multijuicer.sh set-namespace
     run
+    cleanup
     ;;
   *)
     failure "Invalid argument '$COMMAND'\n"
