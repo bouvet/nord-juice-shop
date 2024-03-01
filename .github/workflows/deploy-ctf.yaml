@@ -93,37 +93,37 @@ jobs:
         run: |
           ./manage-multijuicer.sh up
 
-  import-challenges:
-    name: Import challenges to CTFd
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.ENVIRONMENT }}
-    needs: [deploy]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  # import-challenges:
+  #   name: Import challenges to CTFd
+  #   runs-on: ubuntu-latest
+  #   environment: ${{ inputs.ENVIRONMENT }}
+  #   needs: [deploy]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'v1.29.1'
+  #     - name: Install kubectl
+  #       uses: azure/setup-kubectl@v3
+  #       with:
+  #         version: 'v1.29.1'
 
-      - name: Install node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+  #     - name: Install node
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
 
-      - name: Install juice-shop-ctf-cli
-        run: npm install -g juice-shop-ctf-cli
+  #     - name: Install juice-shop-ctf-cli
+  #       run: npm install -g juice-shop-ctf-cli
 
-      - name: Generate challenges
-        env:
-          CTF_KEY: ${{ secrets.CTF_KEY }}
-        run: |
-          ./generate-challenges.sh
+  #     - name: Generate challenges
+  #       env:
+  #         CTF_KEY: ${{ secrets.CTF_KEY }}
+  #       run: |
+  #         ./generate-challenges.sh
 
-      - name: Upload CTFd challenges file as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ctfd-challenges.csv
-          path: ctfd-challenges-*.csv
-          retention-days: 7
+  #     - name: Upload CTFd challenges file as an artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ctfd-challenges.csv
+  #         path: ctfd-challenges-*.csv
+  #         retention-days: 7
