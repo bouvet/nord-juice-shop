@@ -6,6 +6,8 @@ SCRIPT_NAME=$(basename "$0")
 ### Required variables ###
 # Key used to generate the challenge flags. Should be rotated between CTF-events
 CTF_KEY="${CTF_KEY:?Missing required environment variable.}"
+# FQDN (Fully Qualified Domain Name) at which the setup is accessible
+JUICE_FQDN="${JUICE_FQDN:?Missing required environment variable.}"
 
 # JuiceShop CLI command
 _JUICESHOP_CLI_BINARY="juice-shop-ctf"
@@ -25,6 +27,7 @@ if ! command -v kubectl &> /dev/null; then
 fi
 
 # Variables
+_CTFD_CONFIG_GEN_TEAM_NAME="ctfd-config-gen"
 _CTF_CFG_PATH="/tmp/juice-shop-cli-config.yaml"
 _PORT_LOCAL="8808"
 _PIDFILE_PATH="/tmp/.juice-shop-portforward.pid"
@@ -63,6 +66,34 @@ ARGS=("$@")
 
 # Command to execute
 COMMAND="${ARGS[0]:-gen}"
+
+function juice_shop_instance_exists() {
+  _matches=$(kubectl get pod -l "app.kubernetes.io/name=juice-shop" -o name | wc -l)
+  # Check if the length of matches is exactly zero
+  if [ "$_matches" -eq 0 ]; then
+    return 1
+  fi
+}
+
+function create_juice_shop_instance() {
+  _MULTI_JUICER_BASE_URL="balancer"
+  _MULTI_JUICER_CREATE_TEAM_URL="teams/$_CTFD_CONFIG_GEN_TEAM_NAME/join"
+  info "Creating juice-shop instance for CTFd config creation ('$_CTFD_CONFIG_GEN_TEAM_NAME')"
+  __juiceshop_instance=$(curl -s "https://$JUICE_FQDN/$_MULTI_JUICER_BASE_URL/$_MULTI_JUICER_CREATE_TEAM_URL" \
+    -X POST \
+    -H 'Content-Type: application/json' \
+    --data-raw '{}'
+  )
+}
+
+function wait_for_instance() {
+  # Wait for juice-shop instance to be ready
+  info "Waiting for juice-shop instance to be ready..."
+  # Wait for node creation
+  sleep 2
+  # Wait for Ready condition
+  kubectl wait pod --for=condition=Ready --timeout=60s -l "app.kubernetes.io/name=juice-shop"
+}
 
 function create_tunnel_to_pod() {
   # Forward traffic from this device to the juice-shop pod
@@ -110,7 +141,12 @@ function cleanup() {
 }
 
 function run() {
-  create_tunnel_to_pod && success
+  # Generate challenges CSV
+  if ! juice_shop_instance_exists; then
+    create_juice_shop_instance && success
+  fi
+  wait_for_instance
+  create_tunnel_to_pod && success 
   write_config_to_file && success
   run_cli && success
   cleanup && success
