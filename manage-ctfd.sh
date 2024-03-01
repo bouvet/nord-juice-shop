@@ -261,6 +261,54 @@ function setup_ctfd() {
   success
 }
 
+function ctfd_authenticate() {
+  # Retrieve the nonce (and session cookie)
+  _CTFD_NONCE=$(_get_ctfd_nonce "/login")
+  AUTH_RES_STATUS_CODE=$(
+    curl -sLo /dev/null "$_CTFD_URL/login" \
+      --cookie "$_CURL_COOKIE_JAR" \
+      --cookie-jar "$_CURL_COOKIE_JAR" \
+      --write-out "%{http_code}" \
+      -d "name=$CTFD_ADMIN_USERNAME" \
+      -d "password=$CTFD_ADMIN_PASSWORD" \
+      -d "_submit=Submit" \
+      -d "nonce=$_CTFD_NONCE"
+  )
+  if [ ! "$AUTH_RES_STATUS_CODE" -eq 200 ]; then
+    return 1
+  fi
+}
+
+function import_challenges() {
+  info "Importing the challenges CSV '$_CTF_CHALLENGES_OUT_PATH' to CTFd"
+  if [[ ! -f "$_CTF_CHALLENGES_OUT_PATH" ]]; then
+    failure "The challenges CSV '$_CTF_CHALLENGES_OUT_PATH' does not exist. Skipping the automated challenge import." 
+    return 1
+  fi
+  if ! _ctfd_is_configured; then
+    fatal "The CTFd instance has not been configured. Either configure it manually prior to running, or run the 'cfg' command first."
+  fi
+  if ctfd_authenticate; then
+    # Retrieve the nonce (and session cookie)
+    _CTFD_NONCE=$(_get_ctfd_nonce "/admin/config")
+    IMPORT_RES_STATUS_CODE=$(
+      curl -sLo /dev/null "$_CTFD_URL/admin/import/csv" \
+        --cookie "$_CURL_COOKIE_JAR" \
+        --write-out "%{http_code}" \
+        -F "csv_file=@$_CTF_CHALLENGES_OUT_PATH" \
+        -F "csv_type=challenges" \
+        -F "nonce=$_CTFD_NONCE"
+    )
+    if [ ! "$IMPORT_RES_STATUS_CODE" -eq 200 ]; then
+      failure "Automated import of the CTFd challenges CSV failed to to an unexpected error."
+      return 1
+    fi
+  else
+    failure "Failed to authenticate against CTFd. Skipping the automated challenge import."
+    return 1
+  fi
+}
+
 }
 
 function cleanup() {
