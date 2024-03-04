@@ -75,6 +75,12 @@ _CTF_CHALLENGES_OUT_PATH="ctfd-challenges-$(date +%FT%H%M%S).csv"
 CTF_URL="http://localhost:$_PORT_LOCAL"
 _CTFD_URL="https://$JUICE_FQDN/ctfd"
 _CURL_COOKIE_JAR="/tmp/.ctfd-cookies.out"
+# Shared extra arguments to pass to curl
+_CURL_SHARED_ARGS=()
+# Allow passing the --insecure flag to curl
+if [ "${CURL_INSECURE:-0}" -eq 1 ]; then
+  _CURL_SHARED_ARGS+=("--insecure")
+fi
 
 function usage() {
   echo -e "Usage: ./$SCRIPT_NAME COMMAND
@@ -137,8 +143,12 @@ function create_juice_shop_instance() {
   __juiceshop_instance=$(curl -s "https://$JUICE_FQDN/$_MULTI_JUICER_BASE_URL/$_MULTI_JUICER_CREATE_TEAM_URL" \
     -X POST \
     -H 'Content-Type: application/json' \
-    --data-raw '{}'
+    --data-raw '{}' \
+    "${_CURL_SHARED_ARGS[@]}"
   )
+  if [ "$?" -eq 60 ]; then
+    fatal "The TLS certificate for '$JUICE_FQDN' is invalid - if you recently deployed the services, please wait for TLS certificate acqusition to complete before retrying, or set the environment variable 'CURL_INSECURE=1'."
+  fi
 }
 
 function wait_for_instance() {
@@ -199,7 +209,8 @@ function _get_ctfd_nonce() {
     curl -sSL "$_NONCE_URL" \
       --cookie "$_CURL_COOKIE_JAR" \
       --cookie-jar "$_CURL_COOKIE_JAR" \
-      --write-out "%{http_code}"
+      --write-out "%{http_code}" \
+      "${_CURL_SHARED_ARGS[@]}"
   )
   # Find the line matching 'csrfNonce'
   _csrfNonce=$(echo "$_ctfd_res" | grep "csrfNonce")
@@ -218,7 +229,8 @@ function _ctfd_is_configured() {
   HEAD_RES_REDIR=$(
     curl -so /dev/null "$_CTFD_URL/login" \
       --head \
-      --write-out "%{redirect_url}"
+      --write-out "%{redirect_url}" \
+      "${_CURL_SHARED_ARGS[@]}"
   )
   # Check if /ctfd/setup is in the redirect url. If so, the instance is unconfigured
   case "$HEAD_RES_REDIR" in
@@ -262,7 +274,8 @@ function setup_ctfd() {
       -F "start=$CTF_START_DATETIME" \
       -F "end=$CTF_END_DATETIME" \
       -F "_submit=Finish" \
-      -F "nonce=$_CTFD_NONCE"
+      -F "nonce=$_CTFD_NONCE" \
+      "${_CURL_SHARED_ARGS[@]}"
   )
   
   if [ ! "$SETUP_RES_STATUS_CODE" -eq 200 ]; then
@@ -283,7 +296,8 @@ function ctfd_authenticate() {
       -d "name=$CTFD_ADMIN_USERNAME" \
       -d "password=$CTFD_ADMIN_PASSWORD" \
       -d "_submit=Submit" \
-      -d "nonce=$_CTFD_NONCE"
+      -d "nonce=$_CTFD_NONCE" \
+      "${_CURL_SHARED_ARGS[@]}"
   )
   if [ ! "$AUTH_RES_STATUS_CODE" -eq 200 ]; then
     return 1
@@ -308,7 +322,8 @@ function import_challenges() {
         --write-out "%{http_code}" \
         -F "csv_file=@$_CTF_CHALLENGES_OUT_PATH" \
         -F "csv_type=challenges" \
-        -F "nonce=$_CTFD_NONCE"
+        -F "nonce=$_CTFD_NONCE" \
+        "${_CURL_SHARED_ARGS[@]}"
     )
     if [ ! "$IMPORT_RES_STATUS_CODE" -eq 200 ]; then
       failure "Automated import of the CTFd challenges CSV failed to to an unexpected error."
