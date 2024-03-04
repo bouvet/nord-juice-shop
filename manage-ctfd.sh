@@ -286,6 +286,9 @@ function setup_ctfd() {
 }
 
 function ctfd_authenticate() {
+  if ! _ctfd_is_configured; then
+    fatal "The CTFd instance has not been configured. Either configure it manually prior to running, or run the 'cfg' command first."
+  fi
   # Retrieve the nonce (and session cookie)
   _CTFD_NONCE=$(_get_ctfd_nonce "/login")
   AUTH_RES_STATUS_CODE=$(
@@ -310,9 +313,6 @@ function import_challenges() {
     failure "The challenges CSV '$_CTF_CHALLENGES_OUT_PATH' does not exist. Skipping the automated challenge import." 
     return 1
   fi
-  if ! _ctfd_is_configured; then
-    fatal "The CTFd instance has not been configured. Either configure it manually prior to running, or run the 'cfg' command first."
-  fi
   if ctfd_authenticate; then
     # Retrieve the nonce (and session cookie)
     _CTFD_NONCE=$(_get_ctfd_nonce "/admin/config")
@@ -326,7 +326,7 @@ function import_challenges() {
         "${_CURL_SHARED_ARGS[@]}"
     )
     if [ ! "$IMPORT_RES_STATUS_CODE" -eq 200 ]; then
-      failure "Automated import of the CTFd challenges CSV failed to to an unexpected error."
+      failure "Automated import of the CTFd challenges CSV failed due to an unexpected error."
       return 1
     fi
   else
