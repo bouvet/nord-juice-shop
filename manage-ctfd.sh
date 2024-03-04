@@ -81,6 +81,7 @@ _CURL_SHARED_ARGS=()
 if [ "${CURL_INSECURE:-0}" -eq 1 ]; then
   _CURL_SHARED_ARGS+=("--insecure")
 fi
+_PAGES_DIRECTORIES=("pages")
 
 function usage() {
   echo -e "Usage: ./$SCRIPT_NAME COMMAND
@@ -89,6 +90,7 @@ function usage() {
       cfg\tConfigures the CTFd instance
       gen\tGenerates the CTFd challenges CSV
       import\tImport a CTFd challenges CSV to the CTFd instance
+      pages\tImport the custom pages to the CTFd instance
       run\tRuns all of the above, i.e. configures CTFd, and generates and imports the challenges
   "
   exit 0
@@ -335,6 +337,96 @@ function import_challenges() {
   fi
 }
 
+function _delete_default_index_page() {
+  if ctfd_authenticate; then
+    # Retrieve the nonce (and session cookie)
+    _CTFD_NONCE=$(_get_ctfd_nonce "/admin/config")
+    DELETE_RES_STATUS_CODE=$(
+    curl -sLo /dev/null "$JUICE_FQDN/api/v1/pages/1" \
+      --cookie "$_CURL_COOKIE_JAR" \
+      --write-out "%{http_code}" \
+      -X DELETE \
+      -H "CSRF-Token: $_CTFD_NONCE"
+    )
+    if [ ! "$DELETE_RES_STATUS_CODE" -eq 200 ]; then
+      failure "Failed to delete the default index page due to an unexpected error."
+      return 1
+    fi
+  else
+    failure "Failed to authenticate against CTFd. Skipping default index page deletion."
+    return 1
+  fi
+}
+
+function _find_pages() {
+  pages=()
+  for _dir in "${_PAGES_DIRECTORIES[@]}"; do
+    _pages=()
+    # Find all files named "*.md"
+    mapfile -t _pages < <(/usr/bin/find "$_dir" -type f -name "*.md")
+    pages+=("${_pages[@]}")
+  done
+}
+
+function _upload_page() {
+  _fp="${1:?Missing required parameter 'page_filepath'}"
+  _title="${2:?Missing required parameter 'page_title'}"
+  _route="${3:?Missing required parameter 'page_route'}"
+
+  if ctfd_authenticate; then
+    # Retrieve the nonce (and session cookie)
+    _CTFD_NONCE=$(_get_ctfd_nonce "/admin/pages/new")
+    # Write payload to temp. file using jq
+    _payload_fp=".payload.json.tmp"
+    jq -nRs --rawfile content "$_fp" \
+      --arg title "$_title" \
+      --arg route "$_route" \
+      --arg nonce "$_CTFD_NONCE" \
+      '{title: $title, route: $route, format: "markdown", content: $content, nonce: $nonce, draft: false, hidden: false, auth_required: false}' \
+      > "$_payload_fp"
+
+    if [ ! -f "$_payload_fp" ]; then
+      failure "Failed to create custom-page upload payload with jq. Skipping."
+      return 1
+    fi
+    UPLOAD_RES_STATUS_CODE=$(
+      curl -sLo /dev/null "$_CTFD_URL/api/v1/pages" \
+        --cookie "$_CURL_COOKIE_JAR" \
+        --write-out "%{http_code}" \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -H "CSRF-Token: $_CTFD_NONCE" \
+        --data "@$_payload_fp" \
+        "${_CURL_SHARED_ARGS[@]}"
+    )
+    rm "$_payload_fp"
+
+    if [ ! "$UPLOAD_RES_STATUS_CODE" -eq 200 ]; then
+      failure "Failed to upload the custom-page '$_fp' due to an unexpected error. Check the CTFd logs for more information."
+      return 1
+    fi
+  else
+    failure "Failed to authenticate against CTFd. Skipping custom-page upload."
+    return 1
+  fi
+}
+
+function import_pages() {
+  info "Importing the custom pages to CTFd"
+  _delete_default_index_page
+  _find_pages
+  for page_fp in "${pages[@]}"; do
+    # Get the name of the page, removing the directory and suffix
+    _page_filename=$(basename "$page_fp" .md)
+    # Sanitize the name (keeping only alphanumerical chars and dash/underscore)
+    page_name="${_page_filename//[!A-Za-z0-9-_]}"
+    page_route="$page_name"
+    # Replace dash/underscore with space
+    _page_title="${page_name//[-_]/ }"
+    page_title="${_page_title^}"
+    _upload_page "$page_fp" "$page_title" "$page_route"
+  done
+  return 0
 }
 
 function cleanup() {
@@ -396,6 +488,11 @@ case "$COMMAND" in
     fi
     ./manage-multijuicer.sh set-namespace
     import_challenges && success
+    cleanup
+    ;;
+  "pages")
+    ./manage-multijuicer.sh set-namespace
+    import_pages && success
     cleanup
     ;;
   "run")
