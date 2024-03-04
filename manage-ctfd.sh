@@ -60,11 +60,18 @@ if ! command -v "$_JUICESHOP_CLI_BINARY" &> /dev/null; then
   echo "npm install -g $_JUICESHOP_CLI_PACKAGE@$_JUICESHOP_CLI_VERSION"
   exit 1
 fi
-# Check if kubectl is installed
-if ! command -v kubectl &> /dev/null; then
-  echo "Missing required package kubectl."
-  exit 1
-fi
+__REQUIRED_BINARIES=(
+    "kubectl"
+    "curl"
+    "jq"
+)
+# Check that all required binaries are present
+for __REQ_PKG in "${__REQUIRED_BINARIES[@]}"; do
+    if ! which "$__REQ_PKG" &> /dev/null ; then
+        echo "ERROR: Missing required package '$__REQ_PKG'"
+        exit 1
+    fi
+done
 
 # Variables
 _CTFD_CONFIG_GEN_TEAM_NAME="ctfd-config-gen"
