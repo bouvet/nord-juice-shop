@@ -12,7 +12,7 @@ Her må dere registrere dere for å kunne levere flaggene i bytte mot poeng.
 
 Flagg leveres inn på [/challenges](/ctfd/challenges).  
 På [/scoreboard](/ctfd/scoreboard) kan man se hvem som leder.  
-Det kan bli lagt ut hint på [/notifications](/ctfd/notification).  
+Det kan bli lagt ut hint på [/notifications](/ctfd/notifications).  
 
 ## MultiJuicer
 Denne brukes til å gi hvert lag sin egen instans av Juice Shop.
