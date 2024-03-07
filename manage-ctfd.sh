@@ -98,7 +98,7 @@ function usage() {
       gen\tGenerates the CTFd challenges CSV
       import\tImport a CTFd challenges CSV to the CTFd instance
       pages\tImport the custom pages to the CTFd instance
-      run\tRuns all of the above, i.e. configures CTFd, and generates and imports the challenges
+      run\tRuns all of the above, i.e. configures CTFd, and generates and imports the challenges and custom pages
   "
   exit 0
 }
@@ -433,7 +433,6 @@ function import_pages() {
     page_title="${_page_title^}"
     _upload_page "$page_fp" "$page_title" "$page_route"
   done
-  return 0
 }
 
 function cleanup() {
@@ -471,6 +470,7 @@ function run() {
   gen
   if setup_ctfd; then
     import_challenges && success
+    import_pages && success
   fi
 }
 
